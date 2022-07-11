@@ -94,11 +94,6 @@ class FsFixture {
     constructor(fixturePath: string)
 
     /**
-    Static method to create a fixture from a template directory.
-    */
-    static createFromTemplate(fromTemplatePath: string): Promise<Fixture>
-
-    /**
     Check if the fixture exists. Pass in a subpath to check if it exists.
     */
     exists(subpath?: string): Promise<boolean>

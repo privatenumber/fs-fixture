@@ -1,7 +1,9 @@
-import fs from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
 import FsFixture from './fs-fixture';
 import { temporaryDirectory, hasOwn, getId } from './utils';
+
+export type { FsFixture };
 
 export type FileTree = {
 	[path: string]: string | FileTree;
@@ -40,20 +42,35 @@ function flattenFileTree(
 export async function createFixture(
 	source: string | FileTree,
 ) {
+	let fixturePath: string;
+
 	// create from directory path
 	if (typeof source === 'string') {
-		return await FsFixture.createFromTemplate(source);
+		fixturePath = path.join(temporaryDirectory, `${path.basename(source)}-${getId()}`);
+
+		await fs.mkdir(fixturePath, {
+			recursive: true,
+		});
+
+		await fs.cp(
+			source,
+			fixturePath,
+			{
+				recursive: true,
+				// filter: source => !path.basename(source).startsWith('.'),
+			},
+		);
+	} else {
+		// create from json
+		fixturePath = path.join(temporaryDirectory, `fixture-${getId()}`);
+
+		await Promise.all(
+			flattenFileTree(source, fixturePath).map(async (file) => {
+				await fs.mkdir(path.dirname(file.path), { recursive: true });
+				await fs.writeFile(file.path, file.content);
+			}),
+		);
 	}
-
-	// create from json
-	const fixturePath = path.join(temporaryDirectory, `fixture-${getId()}`);
-
-	await Promise.all(
-		flattenFileTree(source, fixturePath).map(async (file) => {
-			await fs.promises.mkdir(path.dirname(file.path), { recursive: true });
-			await fs.promises.writeFile(file.path, file.content);
-		}),
-	);
 
 	return new FsFixture(fixturePath);
 }

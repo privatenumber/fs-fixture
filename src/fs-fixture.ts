@@ -1,6 +1,5 @@
 import { promises as fsPromises } from 'fs';
 import path from 'path';
-import { temporaryDirectory, getId } from './utils';
 
 class FsFixture {
 	/**
@@ -13,39 +12,6 @@ class FsFixture {
 	*/
 	constructor(fixturePath: string) {
 		this.path = fixturePath;
-	}
-
-	/**
-	Static method to create a fixture from a template directory.
-	*/
-	static async createFromTemplate(
-		fromTemplatePath: string,
-	) {
-		const fixturePath = path.resolve(
-			temporaryDirectory,
-			`${path.basename(fromTemplatePath)}-${getId()}`,
-		);
-
-		const fixture = new this(fixturePath);
-
-		if (await fixture.exists()) {
-			await fixture.rm();
-		}
-
-		await fsPromises.mkdir(fixture.path, {
-			recursive: true,
-		});
-
-		await fsPromises.cp(
-			fromTemplatePath,
-			fixture.path,
-			{
-				recursive: true,
-				filter: source => !path.basename(source).startsWith('.'),
-			},
-		);
-
-		return fixture;
 	}
 
 	/**
