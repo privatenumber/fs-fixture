@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { describe, expect } from 'manten';
-import { createFixture } from '#fs-fixture';
+import { createFixture, type FsFixture } from '#fs-fixture';
 
 const exists = (checkPath: string) => fs.access(checkPath).then(() => true, () => false);
 
@@ -13,6 +13,8 @@ describe('fs-fixture', ({ test }) => {
 				b: 'b',
 			},
 		});
+
+		expect<FsFixture>(fixture);
 
 		const filePathA = path.join(fixture.path, 'directory/a');
 		const filePathB = path.join(fixture.path, 'directory/b');
@@ -42,6 +44,8 @@ describe('fs-fixture', ({ test }) => {
 
 	test('creates from directory template', async () => {
 		const fixture = await createFixture('./tests/fixture-template');
+
+		expect<FsFixture>(fixture);
 
 		const filePathA = path.join(fixture.path, 'a');
 		const filePathB = path.join(fixture.path, 'directory/b');
