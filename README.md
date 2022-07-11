@@ -14,7 +14,6 @@ Pass in an object representing the test fixture.
 import { createFixture } from 'fs-fixture'
 
 test('my test using json fixture', async () => {
-
     // Pass in a JSON representing the test fixture
     const fixture = await createFixture({
         // Nested directory syntax
@@ -49,7 +48,6 @@ Pass in a path to a test fixture template directory to make a copy of it.
 
 ```ts
 test('my test using template path', async () => {
-
     // Pass in a path to a fixture template path, and it will make a copy of it
     const fixture = await createFixture('./fixtures/template-a')
 
