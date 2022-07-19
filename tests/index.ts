@@ -6,6 +6,40 @@ import { createFixture, type FsFixture } from '#fs-fixture';
 const exists = (checkPath: string) => fs.access(checkPath).then(() => true, () => false);
 
 describe('fs-fixture', ({ test }) => {
+	test('creates from no arg', async () => {
+		const fixture = await createFixture();
+
+		expect<FsFixture>(fixture);
+
+		// exists
+		expect(await fixture.exists()).toBe(true);
+		expect(await exists(fixture.path)).toBe(true);
+
+		// rm entire fixture
+		await fixture.rm();
+
+		// should not exist
+		expect(await fixture.exists()).toBe(false);
+		expect(await exists(fixture.path)).toBe(false);
+	});
+
+	test('creates from empty object', async () => {
+		const fixture = await createFixture({});
+
+		expect<FsFixture>(fixture);
+
+		// exists
+		expect(await fixture.exists()).toBe(true);
+		expect(await exists(fixture.path)).toBe(true);
+
+		// rm entire fixture
+		await fixture.rm();
+
+		// should not exist
+		expect(await fixture.exists()).toBe(false);
+		expect(await exists(fixture.path)).toBe(false);
+	});
+
 	test('creates from JSON', async () => {
 		const fixture = await createFixture({
 			'directory/a': 'a',

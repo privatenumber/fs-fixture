@@ -40,36 +40,34 @@ function flattenFileTree(
 }
 
 export async function createFixture(
-	source: string | FileTree,
+	source?: string | FileTree,
 ) {
-	let fixturePath: string;
+	const fixturePath = path.join(temporaryDirectory, `fixture-${getId()}`);
 
-	// create from directory path
-	if (typeof source === 'string') {
-		fixturePath = path.join(temporaryDirectory, `${path.basename(source)}-${getId()}`);
+	await fs.mkdir(fixturePath, {
+		recursive: true,
+	});
 
-		await fs.mkdir(fixturePath, {
-			recursive: true,
-		});
-
-		await fs.cp(
-			source,
-			fixturePath,
-			{
-				recursive: true,
-				// filter: source => !path.basename(source).startsWith('.'),
-			},
-		);
-	} else {
-		// create from json
-		fixturePath = path.join(temporaryDirectory, `fixture-${getId()}`);
-
-		await Promise.all(
-			flattenFileTree(source, fixturePath).map(async (file) => {
-				await fs.mkdir(path.dirname(file.path), { recursive: true });
-				await fs.writeFile(file.path, file.content);
-			}),
-		);
+	if (source) {
+		// create from directory path
+		if (typeof source === 'string') {
+			await fs.cp(
+				source,
+				fixturePath,
+				{
+					recursive: true,
+					// filter: source => !path.basename(source).startsWith('.'),
+				},
+			);
+		} else if (typeof source === 'object') {
+			// create from json
+			await Promise.all(
+				flattenFileTree(source, fixturePath).map(async (file) => {
+					await fs.mkdir(path.dirname(file.path), { recursive: true });
+					await fs.writeFile(file.path, file.content);
+				}),
+			);
+		}
 	}
 
 	return new FsFixture(fixturePath);
