@@ -119,3 +119,9 @@ class FsFixture {
     readFile(filePath: string, encoding?: BufferEncoding): Promise<string | Buffer>
 }
 ```
+
+## Related
+
+### [manten](https://github.com/privatenumber/manten)
+
+Lightweight testing library for Node.js
