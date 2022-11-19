@@ -1,5 +1,6 @@
-import { promises as fs } from 'fs';
 import path from 'path';
+import { promises as fs } from 'fs';
+import { copy } from 'fs-extra';
 import FsFixture from './fs-fixture';
 import { temporaryDirectory, hasOwn, getId } from './utils';
 
@@ -51,13 +52,9 @@ export async function createFixture(
 	if (source) {
 		// create from directory path
 		if (typeof source === 'string') {
-			await fs.cp(
+			await copy(
 				source,
 				fixturePath,
-				{
-					recursive: true,
-					// filter: source => !path.basename(source).startsWith('.'),
-				},
 			);
 		} else if (typeof source === 'object') {
 			// create from json

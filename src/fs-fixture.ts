@@ -1,5 +1,6 @@
-import { promises as fsPromises } from 'fs';
 import path from 'path';
+import { promises as fsPromises } from 'fs';
+import { remove } from 'fs-extra';
 
 class FsFixture {
 	/**
@@ -28,10 +29,7 @@ class FsFixture {
 	Delete the fixture directory. Pass in a subpath to delete it.
 	*/
 	rm(subpath = '') {
-		return fsPromises.rm(path.join(this.path, subpath), {
-			recursive: true,
-			force: true,
-		});
+		return remove(path.join(this.path, subpath));
 	}
 
 	/**
