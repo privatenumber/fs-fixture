@@ -38,11 +38,14 @@
 		}
 	},
 	"scripts": {
-		"build": "pkgroll --target=node12.20 --minify",
+		"build": "pkgroll --target=node16.7.0 --minify",
 		"lint": "eslint --cache .",
-		"test": "pnpm build && tsx tests",
+		"test": "tsx tests",
 		"dev": "tsx watch --conditions=development tests",
 		"prepack": "clean-pkg-json"
+	},
+	"engines": {
+		"node": ">=16.7.0"
 	},
 	"devDependencies": {
 		"@pvtnbr/eslint-config": "^0.26.2",
