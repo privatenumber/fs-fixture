@@ -1,7 +1,12 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import FsFixture from './fs-fixture';
-import { temporaryDirectory, hasOwn, getId } from './utils';
+import {
+	temporaryDirectory,
+	directoryNamespace,
+	hasOwn,
+	getId,
+} from './utils';
 
 export type { FsFixture };
 
@@ -42,7 +47,7 @@ function flattenFileTree(
 export async function createFixture(
 	source?: string | FileTree,
 ) {
-	const fixturePath = path.join(temporaryDirectory, `fixture-${getId()}`);
+	const fixturePath = path.join(temporaryDirectory, `${directoryNamespace}-${getId()}`);
 
 	await fs.mkdir(fixturePath, {
 		recursive: true,
