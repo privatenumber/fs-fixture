@@ -6,6 +6,7 @@ Tiny (`560 B` gzipped) and no dependencies!
 
 ### Example
 ```ts
+import fs from 'fs/promises'
 import { createFixture } from 'fs-fixture'
 
 const fixture = await createFixture({
@@ -14,7 +15,8 @@ const fixture = await createFixture({
     }
 })
 
-console.log(fixture.path)
+const content = await fs.readFile(fixture.getPath('dir-a/file-b'))
+console.log(content)
 ```
 
 <p align="center">
@@ -32,14 +34,14 @@ import { createFixture } from 'fs-fixture'
 
 const fixture = await createFixture({
     // Nested directory syntax
-    'directory-a': {
-        'directory-b': {
+    'dir-a': {
+        'dir-b': {
             'file-a.txt': 'hello world'
         }
     },
 
     // Alternatively, use the directory path syntax - Same as above
-    'directory-a/directory-b/file-b.txt': 'goodbye world'
+    'dir-a/dir-b/file-b.txt': 'goodbye world'
 })
 
 // Interact with the fixture
