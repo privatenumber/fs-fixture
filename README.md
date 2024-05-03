@@ -1,45 +1,53 @@
-# fs-fixture
+# fs-fixture [![Latest version](https://badgen.net/npm/v/fs-fixture)](https://npm.im/fs-fixture) [![npm downloads](https://badgen.net/npm/dm/fs-fixture)](https://npm.im/fs-fixture)
 
-Easily create test fixtures at a temporary file-system path.
+Simple API to create disposable test fixtures on disk.
 
-<sub>Support this project by ⭐️ starring and sharing it. [Follow me](https://github.com/privatenumber) to see what other cool projects I'm working on! ❤️</sub>
+Tiny (`560 B` gzipped) and no dependencies!
+
+### Example
+```ts
+import { createFixture } from 'fs-fixture'
+
+const fixture = await createFixture({
+    'dir-a': {
+        'file-b': 'hello world'
+    }
+})
+
+console.log(fixture.path)
+```
+
+
+<p align="center">
+	<a href="https://github.com/sponsors/privatenumber/sponsorships?tier_id=398771"><img width="412" src="https://raw.githubusercontent.com/privatenumber/sponsors/master/banners/assets/donate.webp"></a>
+	<a href="https://github.com/sponsors/privatenumber/sponsorships?tier_id=397608"><img width="412" src="https://raw.githubusercontent.com/privatenumber/sponsors/master/banners/assets/sponsor.webp"></a>
+</p>
+<p align="center"><sup><i>Already a sponsor?</i> Join the discussion in the <a href="https://github.com/pvtnbr/fs-fixture">Development repo</a>!</sup></p>
 
 ## Usage
 
-### JSON input
-
-Pass in an object representing the test fixture.
+Pass in an object representing the file structure:
 
 ```ts
 import { createFixture } from 'fs-fixture'
 
-test('my test using json fixture', async () => {
-    // Pass in a JSON representing the test fixture
-    const fixture = await createFixture({
-        // Nested directory syntax
-        directoryA: {
-            directoryB: {
-                fileNameA: 'fileContent'
-            }
-        },
+const fixture = await createFixture({
+    // Nested directory syntax
+    directoryA: {
+        directoryB: {
+            fileNameA: 'fileContent'
+        }
+    },
 
-        // Directory path syntax - Same as above
-        'directoryA/directoryB/fileNameB': 'fileContent'
-    })
-
-    /*
-    Your test code here...
-
-    // Log fixture path
-    console.log(fixture.path)
-
-    // Check if relative path exists
-    console.log(await fixture.exists('./file'))
-    */
-
-    // Cleanup fixture
-    await fixture.rm()
+    // Alternatively, use the directory path syntax - Same as above
+    'directoryA/directoryB/fileNameB': 'fileContent'
 })
+
+// Interact with the fixture
+console.log(fixture.path)
+
+// Cleanup fixture
+await fixture.rm()
 ```
 
 ### Template path input
@@ -47,15 +55,13 @@ test('my test using json fixture', async () => {
 Pass in a path to a test fixture template directory to make a copy of it.
 
 ```ts
-test('my test using template path', async () => {
-    // Pass in a path to a fixture template path, and it will make a copy of it
-    const fixture = await createFixture('./fixtures/template-a')
+// Pass in a path to a fixture template path, and it will make a copy of it
+const fixture = await createFixture('./fixtures/template-a')
 
-    /* Your test code here... */
+/* Your test code here... */
 
-    // Cleanup fixture
-    await fixture.rm()
-})
+// Cleanup fixture
+await fixture.rm()
 ```
 
 ## API
