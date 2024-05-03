@@ -111,7 +111,7 @@ class FsFixture {
     /**
     Create a JSON file in the fixture directory.
     */
-    writeJson(filePath: string, json: any): Promise<void>
+    writeJson(filePath: string, json: unknown): Promise<void>
 
     /**
     Read a file from the fixture directory.

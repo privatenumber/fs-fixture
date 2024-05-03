@@ -44,7 +44,7 @@
 	},
 	"scripts": {
 		"build": "pkgroll --target=node16.7.0 --minify",
-		"lint": "eslint --cache .",
+		"lint": "lintroll --cache .",
 		"type-check": "tsc --noEmit",
 		"test": "pnpm build && tsx tests",
 		"dev": "tsx watch --conditions=development tests",
@@ -54,16 +54,12 @@
 		"node": ">=16.7.0"
 	},
 	"devDependencies": {
-		"@pvtnbr/eslint-config": "^0.33.0",
 		"@types/node": "^18.11.9",
 		"clean-pkg-json": "^1.2.0",
-		"eslint": "^8.29.0",
+		"lintroll": "^1.5.1",
 		"manten": "^0.6.0",
 		"pkgroll": "^1.8.0",
 		"tsx": "^3.12.1",
-		"typescript": "^4.9.4"
-	},
-	"eslintConfig": {
-		"extends": "@pvtnbr"
+		"typescript": "^5.4.5"
 	}
 }

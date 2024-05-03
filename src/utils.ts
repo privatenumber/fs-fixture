@@ -5,10 +5,10 @@ export const temporaryDirectory = fs.realpathSync(os.tmpdir());
 export const directoryNamespace = `fs-fixture-${Date.now()}`;
 
 let id = 0;
-export function getId() {
+export const getId = () => {
 	id += 1;
 	return id;
-}
+};
 
 const { hasOwnProperty } = Object.prototype;
-export const hasOwn = (object: any, key: string) => hasOwnProperty.call(object, key);
+export const hasOwn = (object: unknown, key: string) => hasOwnProperty.call(object, key);

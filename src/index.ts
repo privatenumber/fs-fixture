@@ -14,10 +14,10 @@ export type FileTree = {
 	[path: string]: string | FileTree;
 };
 
-function flattenFileTree(
+const flattenFileTree = (
 	fileTree: FileTree,
 	pathPrefix: string,
-) {
+) => {
 	const files: {
 		path: string;
 		content: string;
@@ -42,11 +42,11 @@ function flattenFileTree(
 	}
 
 	return files;
-}
+};
 
-export async function createFixture(
+export const createFixture = async (
 	source?: string | FileTree,
-) {
+) => {
 	const fixturePath = path.join(temporaryDirectory, `${directoryNamespace}-${getId()}`);
 
 	await fs.mkdir(fixturePath, {
@@ -76,4 +76,4 @@ export async function createFixture(
 	}
 
 	return new FsFixture(fixturePath);
-}
+};

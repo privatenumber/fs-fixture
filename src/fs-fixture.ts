@@ -47,7 +47,7 @@ class FsFixture {
 	/**
 	Create a JSON file in the fixture directory.
 	*/
-	writeJson(filePath: string, json: any) {
+	writeJson(filePath: string, json: unknown) {
 		return this.writeFile(
 			filePath,
 			JSON.stringify(json, null, 2),
