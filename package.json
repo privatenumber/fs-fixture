@@ -43,7 +43,7 @@
 		}
 	},
 	"scripts": {
-		"build": "pkgroll --target=node16.7.0 --minify",
+		"build": "pkgroll --minify",
 		"lint": "lintroll --cache .",
 		"type-check": "tsc --noEmit",
 		"test": "tsx tests",
@@ -51,7 +51,7 @@
 		"prepack": "pnpm build && clean-pkg-json"
 	},
 	"engines": {
-		"node": ">=16.7.0"
+		"node": ">=18.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.12.8",

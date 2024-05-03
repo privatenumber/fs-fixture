@@ -1,10 +1,9 @@
-import { promises as fs } from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
-import FsFixture from './fs-fixture';
+import FsFixture from './fs-fixture.js';
 import {
 	temporaryDirectory,
 	directoryNamespace,
-	hasOwn,
 	getId,
 } from './utils';
 
@@ -24,7 +23,7 @@ const flattenFileTree = (
 	}[] = [];
 
 	for (const filePath in fileTree) {
-		if (!hasOwn(fileTree, filePath)) {
+		if (!Object.hasOwn(fileTree, filePath)) {
 			continue;
 		}
 

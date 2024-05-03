@@ -1,4 +1,4 @@
-import { promises as fsPromises } from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 
 class FsFixture {
@@ -18,7 +18,7 @@ class FsFixture {
 	Check if the fixture exists. Pass in a subpath to check if it exists.
 	*/
 	exists(subpath = '') {
-		return fsPromises.access(path.join(this.path, subpath)).then(
+		return fs.access(path.join(this.path, subpath)).then(
 			() => true,
 			() => false,
 		);
@@ -28,7 +28,7 @@ class FsFixture {
 	Delete the fixture directory. Pass in a subpath to delete it.
 	*/
 	rm(subpath = '') {
-		return fsPromises.rm(path.join(this.path, subpath), {
+		return fs.rm(path.join(this.path, subpath), {
 			recursive: true,
 			force: true,
 		});
@@ -38,7 +38,7 @@ class FsFixture {
 	Create a file in the fixture directory.
 	*/
 	writeFile(filePath: string, content: string) {
-		return fsPromises.writeFile(
+		return fs.writeFile(
 			path.join(this.path, filePath),
 			content,
 		);
@@ -58,7 +58,7 @@ class FsFixture {
 	Read a file from the fixture directory.
 	*/
 	readFile(filePath: string, encoding?: BufferEncoding) {
-		return fsPromises.readFile(
+		return fs.readFile(
 			path.join(this.path, filePath),
 			encoding,
 		);

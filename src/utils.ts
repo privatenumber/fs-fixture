@@ -9,6 +9,3 @@ export const getId = () => {
 	id += 1;
 	return id;
 };
-
-const { hasOwnProperty } = Object.prototype;
-export const hasOwn = (object: unknown, key: string) => hasOwnProperty.call(object, key);
