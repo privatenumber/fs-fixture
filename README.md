@@ -109,6 +109,11 @@ class FsFixture {
     constructor(fixturePath: string)
 
     /**
+	Get the full path to a subpath in the fixture directory.
+	*/
+    getPath(subpath: string): string
+
+    /**
     Check if the fixture exists. Pass in a subpath to check if it exists.
     */
     exists(subpath?: string): Promise<boolean>
