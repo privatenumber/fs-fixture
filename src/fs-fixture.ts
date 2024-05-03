@@ -1,6 +1,15 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+if (typeof Symbol.asyncDispose !== 'symbol') {
+	Object.defineProperty(Symbol, 'asyncDispose', {
+		configurable: false,
+		enumerable: false,
+		writable: false,
+		value: Symbol.for('asyncDispose'),
+	});
+}
+
 class FsFixture {
 	/**
 	Path to the fixture directory.

@@ -43,7 +43,7 @@
 		}
 	},
 	"scripts": {
-		"build": "pkgroll --minify",
+		"build": "pkgroll --minify --target=node18",
 		"lint": "lintroll --cache .",
 		"type-check": "tsc --noEmit",
 		"test": "tsx tests",
