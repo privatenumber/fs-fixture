@@ -106,4 +106,16 @@ describe('fs-fixture', ({ test }) => {
 		expect(await fixture.exists()).toBe(false);
 		expect(await exists(fixture.path)).toBe(false);
 	});
+
+	test('explicit resource management', async () => {
+		let fixturePath: string;
+
+		// eslint-disable-next-line no-lone-blocks
+		{
+			await using fixture = await createFixture({});
+			fixturePath = fixture.path;
+			expect(await exists(fixturePath)).toBe(true);
+		}
+		expect(await exists(fixturePath)).toBe(false);
+	});
 });

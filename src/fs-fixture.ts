@@ -70,6 +70,14 @@ class FsFixture {
 			encoding,
 		);
 	}
+
+	/**
+	 * Resource management cleanup
+	 * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html
+	 */
+	async [Symbol.asyncDispose]() {
+		await this.rm();
+	}
 }
 
 export default FsFixture;

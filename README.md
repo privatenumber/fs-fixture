@@ -32,14 +32,14 @@ import { createFixture } from 'fs-fixture'
 
 const fixture = await createFixture({
     // Nested directory syntax
-    directoryA: {
-        directoryB: {
-            fileNameA: 'fileContent'
+    'directory-a': {
+        'directory-b': {
+            'file-a.txt': 'hello world'
         }
     },
 
     // Alternatively, use the directory path syntax - Same as above
-    'directoryA/directoryB/fileNameB': 'fileContent'
+    'directory-a/directory-b/file-b.txt': 'goodbye world'
 })
 
 // Interact with the fixture
@@ -61,6 +61,16 @@ const fixture = await createFixture('./fixtures/template-a')
 
 // Cleanup fixture
 await fixture.rm()
+```
+
+### `using` keyword (Explicit Resource Management)
+
+[TypeScript 5.2](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html) supports the [Explicit Resource Management](https://github.com/tc39/proposal-explicit-resource-management) feature, which allows you to instantiate the fixture via `using`. When the fixture is declared this way, it gets automatically cleaned up when exiting the scope.
+
+```ts
+await using fixture = await createFixture({ file: 'hello' })
+
+// No need to run fixture.rm()
 ```
 
 ## API
