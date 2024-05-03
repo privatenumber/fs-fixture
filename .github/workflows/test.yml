@@ -33,5 +33,8 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test Node.js v16
+        run: pnpm --use-node-version=16.20.0 test
+
       - name: Lint
         run: pnpm lint
