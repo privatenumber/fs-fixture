@@ -1,4 +1,11 @@
-# fs-fixture [![Latest version](https://badgen.net/npm/v/fs-fixture)](https://npm.im/fs-fixture) [![npm downloads](https://badgen.net/npm/dm/fs-fixture)](https://npm.im/fs-fixture)
+<p align="center">
+	<img width="160" src=".github/logo.webp">
+</p>
+<h1 align="center">
+	<sup>fs-fixture</sup>
+	<br>
+	<a href="https://npm.im/fs-fixture"><img src="https://badgen.net/npm/v/fs-fixture"></a> <a href="https://npm.im/fs-fixture"><img src="https://badgen.net/npm/dm/fs-fixture"></a>
+</h1>
 
 Simple API to create disposable test fixtures on disk.
 
