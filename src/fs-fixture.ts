@@ -15,10 +15,17 @@ class FsFixture {
 	}
 
 	/**
+	Get the full path to a subpath in the fixture directory.
+	*/
+	getPath(subpath: string) {
+		return path.join(this.path, subpath);
+	}
+
+	/**
 	Check if the fixture exists. Pass in a subpath to check if it exists.
 	*/
 	exists(subpath = '') {
-		return fs.access(path.join(this.path, subpath)).then(
+		return fs.access(this.getPath(subpath)).then(
 			() => true,
 			() => false,
 		);
@@ -28,7 +35,7 @@ class FsFixture {
 	Delete the fixture directory. Pass in a subpath to delete it.
 	*/
 	rm(subpath = '') {
-		return fs.rm(path.join(this.path, subpath), {
+		return fs.rm(this.getPath(subpath), {
 			recursive: true,
 			force: true,
 		});
@@ -39,7 +46,7 @@ class FsFixture {
 	*/
 	writeFile(filePath: string, content: string) {
 		return fs.writeFile(
-			path.join(this.path, filePath),
+			this.getPath(filePath),
 			content,
 		);
 	}
@@ -59,7 +66,7 @@ class FsFixture {
 	*/
 	readFile(filePath: string, encoding?: BufferEncoding) {
 		return fs.readFile(
-			path.join(this.path, filePath),
+			this.getPath(filePath),
 			encoding,
 		);
 	}
