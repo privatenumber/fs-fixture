@@ -118,8 +118,8 @@ class FsFixture {
     constructor(fixturePath: string)
 
     /**
-	Get the full path to a subpath in the fixture directory.
-	*/
+    Get the full path to a subpath in the fixture directory.
+    */
     getPath(subpath: string): string
 
     /**
