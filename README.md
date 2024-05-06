@@ -43,7 +43,8 @@ const fixture = await createFixture({
     // Nested directory syntax
     'dir-a': {
         'dir-b': {
-            'file-a.txt': 'hello world'
+            'file-a.txt': 'hello world',
+            'file-b.txt': ({ fixturePath }) => `Fixture path: ${fixturePath}`
         }
     },
 
@@ -110,7 +111,7 @@ class FsFixture {
     /**
     Path to the fixture directory.
     */
-    path: string
+    readonly path: string
 
     /**
     Create a Fixture instance from a path. Does not create the fixture directory.

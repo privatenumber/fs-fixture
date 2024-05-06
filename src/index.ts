@@ -9,13 +9,18 @@ import {
 
 export type { FsFixture };
 
+type Api = {
+	fixturePath: string;
+};
+
 export type FileTree = {
-	[path: string]: string | FileTree;
+	[path: string]: string | FileTree | ((api: Api) => string);
 };
 
 const flattenFileTree = (
 	fileTree: FileTree,
 	pathPrefix: string,
+	api: Api,
 ) => {
 	const files: {
 		path: string;
@@ -27,7 +32,12 @@ const flattenFileTree = (
 			continue;
 		}
 
-		const fileContent = fileTree[filePath];
+		let fileContent = fileTree[filePath];
+
+		if (typeof fileContent === 'function') {
+			fileContent = fileContent(api);
+		}
+
 		if (typeof fileContent === 'string') {
 			files.push({
 				path: path.join(pathPrefix, filePath),
@@ -35,7 +45,7 @@ const flattenFileTree = (
 			});
 		} else { // Directory
 			files.push(
-				...flattenFileTree(fileContent, path.join(pathPrefix, filePath)),
+				...flattenFileTree(fileContent, path.join(pathPrefix, filePath), api),
 			);
 		}
 	}
@@ -46,7 +56,7 @@ const flattenFileTree = (
 export const createFixture = async (
 	source?: string | FileTree,
 ) => {
-	const fixturePath = path.join(temporaryDirectory, `${directoryNamespace}-${getId()}`);
+	const fixturePath = path.join(temporaryDirectory, `${directoryNamespace}-${getId()}/`);
 
 	await fs.mkdir(fixturePath, {
 		recursive: true,
@@ -66,7 +76,7 @@ export const createFixture = async (
 		} else if (typeof source === 'object') {
 			// create from json
 			await Promise.all(
-				flattenFileTree(source, fixturePath).map(async (file) => {
+				flattenFileTree(source, fixturePath, { fixturePath }).map(async (file) => {
 					await fs.mkdir(path.dirname(file.path), { recursive: true });
 					await fs.writeFile(file.path, file.content);
 				}),
@@ -74,5 +84,5 @@ export const createFixture = async (
 		}
 	}
 
-	return new FsFixture(`${fixturePath}/`);
+	return new FsFixture(fixturePath);
 };
