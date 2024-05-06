@@ -11,6 +11,7 @@ export type { FsFixture };
 
 type Api = {
 	fixturePath: string;
+	getPath(subpath: string): string;
 };
 
 export type FileTree = {
@@ -75,8 +76,12 @@ export const createFixture = async (
 			);
 		} else if (typeof source === 'object') {
 			// create from json
+			const api: Api = {
+				fixturePath,
+				getPath: subpath => path.join(fixturePath, subpath),
+			};
 			await Promise.all(
-				flattenFileTree(source, fixturePath, { fixturePath }).map(async (file) => {
+				flattenFileTree(source, fixturePath, api).map(async (file) => {
 					await fs.mkdir(path.dirname(file.path), { recursive: true });
 					await fs.writeFile(file.path, file.content);
 				}),
