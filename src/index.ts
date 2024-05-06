@@ -74,5 +74,5 @@ export const createFixture = async (
 		}
 	}
 
-	return new FsFixture(fixturePath);
+	return new FsFixture(`${fixturePath}/`);
 };
