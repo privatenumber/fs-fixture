@@ -73,7 +73,20 @@ class FsFixture {
 	/**
 	Read a file from the fixture directory.
 	*/
-	readFile(filePath: string, encoding?: BufferEncoding) {
+	readFile(
+		filePath: string,
+		encoding?: null,
+	): Promise<Buffer>;
+
+	readFile(
+		filePath: string,
+		encoding: BufferEncoding,
+	): Promise<string>;
+
+	readFile(
+		filePath: string,
+		encoding?: BufferEncoding | null,
+	) {
 		return fs.readFile(
 			this.getPath(filePath),
 			encoding,
