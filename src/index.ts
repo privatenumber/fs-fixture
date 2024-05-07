@@ -9,9 +9,20 @@ import {
 
 export type { FsFixture };
 
+class Symlink {
+	target: string;
+
+	path?: string;
+
+	constructor(target: string) {
+		this.target = target;
+	}
+}
+
 type ApiBase = {
 	fixturePath: string;
 	getPath(subpath: string): string;
+	symlink(targetPath: string): Symlink;
 };
 
 type Api = ApiBase & {
@@ -19,7 +30,7 @@ type Api = ApiBase & {
 };
 
 export type FileTree = {
-	[path: string]: string | FileTree | ((api: Api) => string);
+	[path: string]: string | FileTree | ((api: Api) => string | Symlink);
 };
 
 type File = {
@@ -32,7 +43,7 @@ const flattenFileTree = (
 	pathPrefix: string,
 	apiBase: ApiBase,
 ) => {
-	const files: File[] = [];
+	const files: (File | Symlink)[] = [];
 
 	for (const subPath in fileTree) {
 		if (!Object.hasOwn(fileTree, subPath)) {
@@ -47,7 +58,14 @@ const flattenFileTree = (
 				Object.create(apiBase),
 				{ filePath },
 			);
-			fileContent = fileContent(api);
+			const result = fileContent(api);
+			if (result instanceof Symlink) {
+				result.path = filePath;
+				files.push(result);
+				continue;
+			} else {
+				fileContent = result;
+			}
 		}
 
 		if (typeof fileContent === 'string') {
@@ -90,11 +108,16 @@ export const createFixture = async (
 			const api: ApiBase = {
 				fixturePath,
 				getPath: subpath => path.join(fixturePath, subpath),
+				symlink: targetPath => new Symlink(targetPath),
 			};
 			await Promise.all(
 				flattenFileTree(source, fixturePath, api).map(async (file) => {
-					await fs.mkdir(path.dirname(file.path), { recursive: true });
-					await fs.writeFile(file.path, file.content);
+					await fs.mkdir(path.dirname(file.path!), { recursive: true });
+					if (file instanceof Symlink) {
+						await fs.symlink(file.target, file.path!);
+					} else {
+						await fs.writeFile(file.path, file.content);
+					}
 				}),
 			);
 		}

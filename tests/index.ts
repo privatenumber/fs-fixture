@@ -52,6 +52,7 @@ describe('fs-fixture', ({ test }) => {
 					fixturePath,
 					filePath,
 				}),
+				d: ({ symlink }) => symlink('../directory/a'),
 			},
 		});
 
@@ -73,6 +74,7 @@ describe('fs-fixture', ({ test }) => {
 			fixturePath: fixture.path,
 			filePath: fixture.getPath('directory/c'),
 		}));
+		expect(await fixture.readFile('directory/d', 'utf8')).toBe('a');
 
 		// rm file
 		await fixture.rm('directory/a');

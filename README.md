@@ -42,9 +42,10 @@ import { createFixture } from 'fs-fixture'
 const fixture = await createFixture({
     // Nested directory syntax
     'dir-a': {
+        'file-a.txt': 'hello world',
         'dir-b': {
-            'file-a.txt': 'hello world',
-            'file-b.txt': ({ fixturePath }) => `Fixture path: ${fixturePath}`
+            'file-b.txt': ({ fixturePath }) => `Fixture path: ${fixturePath}`,
+            'symlink-c': ({ symlink }) => symlink('../file-a.txt')
         }
     },
 
@@ -104,8 +105,17 @@ type FileTree = {
 }
 
 type Api = {
+    // Fixture root path
     fixturePath: string
+
+    // Current file path
     filePath: string
+
+    // Get path from the root of the fixture
+    getPath: (subpath: string) => string
+
+    // Create a symlink
+    symlink: (target: string) => Symlink
 }
 ```
 
