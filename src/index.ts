@@ -21,7 +21,7 @@ class Symlink {
 
 type ApiBase = {
 	fixturePath: string;
-	getPath(subpath: string): string;
+	getPath(...subpaths: string[]): string;
 	symlink(targetPath: string): Symlink;
 };
 
@@ -107,7 +107,7 @@ export const createFixture = async (
 			// create from json
 			const api: ApiBase = {
 				fixturePath,
-				getPath: subpath => path.join(fixturePath, subpath),
+				getPath: (...subpaths) => path.join(fixturePath, ...subpaths),
 				symlink: targetPath => new Symlink(targetPath),
 			};
 			await Promise.all(

@@ -112,7 +112,7 @@ type Api = {
     filePath: string
 
     // Get path from the root of the fixture
-    getPath: (subpath: string) => string
+    getPath: (...subpaths: string[]) => string
 
     // Create a symlink
     symlink: (target: string) => Symlink
@@ -136,7 +136,7 @@ class FsFixture {
     /**
     Get the full path to a subpath in the fixture directory.
     */
-    getPath(subpath: string): string
+    getPath(...subpaths: string[]): string
 
     /**
     Check if the fixture exists. Pass in a subpath to check if it exists.

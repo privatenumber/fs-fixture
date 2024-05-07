@@ -26,8 +26,8 @@ class FsFixture {
 	/**
 	Get the full path to a subpath in the fixture directory.
 	*/
-	getPath(subpath: string) {
-		return path.join(this.path, subpath);
+	getPath(...subpaths: string[]) {
+		return path.join(this.path, ...subpaths);
 	}
 
 	/**
