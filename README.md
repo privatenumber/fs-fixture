@@ -100,7 +100,12 @@ Path to a template fixture path, or a `FileTree` object that represents the fixt
 
 ```ts
 type FileTree = {
-    [path: string]: string | FileTree
+    [path: string]: string | FileTree | ((api: Api) => string)
+}
+
+type Api = {
+    fixturePath: string
+    filePath: string
 }
 ```
 

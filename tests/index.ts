@@ -45,7 +45,13 @@ describe('fs-fixture', ({ test }) => {
 			'directory/a': 'a',
 			directory: {
 				b: 'b',
-				c: ({ fixturePath }) => fixturePath,
+				c: ({
+					fixturePath,
+					filePath,
+				}) => JSON.stringify({
+					fixturePath,
+					filePath,
+				}),
 			},
 		});
 
@@ -63,7 +69,10 @@ describe('fs-fixture', ({ test }) => {
 		expect(await fixture.readFile('directory/a', 'utf8')).toBe('a');
 		expect(await fs.readFile(filePathB, 'utf8')).toBe('b');
 		expect(await fixture.readFile('directory/b', 'utf8')).toBe('b');
-		expect(await fixture.readFile('directory/c', 'utf8')).toBe(fixture.path);
+		expect(await fixture.readFile('directory/c', 'utf8')).toBe(JSON.stringify({
+			fixturePath: fixture.path,
+			filePath: fixture.getPath('directory/c'),
+		}));
 
 		// rm file
 		await fixture.rm('directory/a');

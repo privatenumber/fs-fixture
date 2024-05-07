@@ -9,44 +9,55 @@ import {
 
 export type { FsFixture };
 
-type Api = {
+type ApiBase = {
 	fixturePath: string;
 	getPath(subpath: string): string;
+};
+
+type Api = ApiBase & {
+	filePath: string;
 };
 
 export type FileTree = {
 	[path: string]: string | FileTree | ((api: Api) => string);
 };
 
+type File = {
+	path: string;
+	content: string;
+};
+
 const flattenFileTree = (
 	fileTree: FileTree,
 	pathPrefix: string,
-	api: Api,
+	apiBase: ApiBase,
 ) => {
-	const files: {
-		path: string;
-		content: string;
-	}[] = [];
+	const files: File[] = [];
 
-	for (const filePath in fileTree) {
-		if (!Object.hasOwn(fileTree, filePath)) {
+	for (const subPath in fileTree) {
+		if (!Object.hasOwn(fileTree, subPath)) {
 			continue;
 		}
 
-		let fileContent = fileTree[filePath];
+		const filePath = path.join(pathPrefix, subPath);
 
+		let fileContent = fileTree[subPath];
 		if (typeof fileContent === 'function') {
+			const api: Api = Object.assign(
+				Object.create(apiBase),
+				{ filePath },
+			);
 			fileContent = fileContent(api);
 		}
 
 		if (typeof fileContent === 'string') {
 			files.push({
-				path: path.join(pathPrefix, filePath),
+				path: filePath,
 				content: fileContent,
 			});
 		} else { // Directory
 			files.push(
-				...flattenFileTree(fileContent, path.join(pathPrefix, filePath), api),
+				...flattenFileTree(fileContent, filePath, apiBase),
 			);
 		}
 	}
@@ -76,7 +87,7 @@ export const createFixture = async (
 			);
 		} else if (typeof source === 'object') {
 			// create from json
-			const api: Api = {
+			const api: ApiBase = {
 				fixturePath,
 				getPath: subpath => path.join(fixturePath, subpath),
 			};
