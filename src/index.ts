@@ -9,20 +9,35 @@ import {
 
 export type { FsFixture };
 
+type SymlinkType = 'file' | 'dir' | 'junction';
+
 class Symlink {
 	target: string;
 
+	type?: SymlinkType;
+
 	path?: string;
 
-	constructor(target: string) {
+	constructor(
+		target: string,
+		type?: SymlinkType,
+	) {
 		this.target = target;
+		this.type = type;
 	}
 }
 
 type ApiBase = {
 	fixturePath: string;
 	getPath(...subpaths: string[]): string;
-	symlink(targetPath: string): Symlink;
+	symlink(
+		targetPath: string,
+
+		/**
+		 * Symlink type for Windows. Defaults to auto-detect by Node.
+		 */
+		type?: SymlinkType,
+	): Symlink;
 };
 
 type Api = ApiBase & {
@@ -108,13 +123,13 @@ export const createFixture = async (
 			const api: ApiBase = {
 				fixturePath,
 				getPath: (...subpaths) => path.join(fixturePath, ...subpaths),
-				symlink: targetPath => new Symlink(targetPath),
+				symlink: (targetPath, type) => new Symlink(targetPath, type),
 			};
 			await Promise.all(
 				flattenFileTree(source, fixturePath, api).map(async (file) => {
 					await fs.mkdir(path.dirname(file.path!), { recursive: true });
 					if (file instanceof Symlink) {
-						await fs.symlink(file.target, file.path!);
+						await fs.symlink(file.target, file.path!, file.type);
 					} else {
 						await fs.writeFile(file.path, file.content);
 					}
