@@ -6,6 +6,7 @@ import {
 	directoryNamespace,
 	getId,
 } from './utils';
+
 export { type FsFixtureType as FsFixture } from './fs-fixture.js';
 
 type SymlinkType = 'file' | 'dir' | 'junction';
