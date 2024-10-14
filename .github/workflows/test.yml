@@ -22,9 +22,8 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
           run_install: true
 
       - name: Build
@@ -34,7 +33,7 @@ jobs:
         run: pnpm test
 
       - name: Test Node.js v18
-        run: pnpm --use-node-version=18.0.0 test
+        run: pnpm --use-node-version=18.20.4 test
 
       - name: Lint
         run: pnpm lint

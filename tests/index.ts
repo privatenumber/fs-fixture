@@ -123,7 +123,6 @@ describe('fs-fixture', ({ test }) => {
 	test('explicit resource management', async () => {
 		let fixturePath: string;
 
-		// eslint-disable-next-line no-lone-blocks
 		{
 			await using fixture = await createFixture({});
 			fixturePath = fixture.path;
