@@ -10,7 +10,7 @@ if (typeof Symbol.asyncDispose !== 'symbol') {
 	});
 }
 
-class FsFixture {
+export class FsFixture {
 	/**
 	Path to the fixture directory.
 	*/
@@ -102,4 +102,4 @@ class FsFixture {
 	}
 }
 
-export default FsFixture;
+export type FsFixtureType = FsFixture;

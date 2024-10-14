@@ -1,13 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
-import FsFixture from './fs-fixture.js';
+import { FsFixture } from './fs-fixture.js';
 import {
 	temporaryDirectory,
 	directoryNamespace,
 	getId,
 } from './utils';
-
-export type { FsFixture };
+export { type FsFixtureType as FsFixture } from './fs-fixture.js';
 
 type SymlinkType = 'file' | 'dir' | 'junction';
 
