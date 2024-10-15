@@ -133,12 +133,7 @@ describe('fs-fixture', ({ test }) => {
 	});
 
 	test('custom temporary directory', async () => {
-		const customTemporaryDirectory = path.join(await fs.realpath(os.tmpdir()), 'custom-fs-fixture');
-		// Remove if exists from previous run
-		await fs.rm(customTemporaryDirectory, {
-			recursive: true,
-			force: true,
-		});
+		const customTemporaryDirectory = path.join(await fs.realpath(os.tmpdir()), 'custom-dir-' + Date.now());
 
 		const fixture = await createFixture({}, {
 			tempDir: customTemporaryDirectory,
@@ -147,7 +142,6 @@ describe('fs-fixture', ({ test }) => {
 		expect(await fixture.exists()).toBe(true);
 		expect(fixture.getPath().startsWith(customTemporaryDirectory)).toBe(true);
 
-		// rm entire tempDir (includes fixture)
 		await fs.rm(customTemporaryDirectory, {
 			recursive: true,
 			force: true,

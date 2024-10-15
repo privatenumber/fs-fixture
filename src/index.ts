@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { FsFixture } from './fs-fixture.js';
 import {
-	temporaryDirectory,
+	osTemporaryDirectory,
 	directoryNamespace,
 	getId,
 } from './utils';
@@ -113,7 +113,7 @@ export const createFixture = async (
 ) => {
 	const resolvedTemporaryDirectory = options?.tempDir
 		? path.resolve(options.tempDir)
-		: temporaryDirectory;
+		: osTemporaryDirectory;
 
 	const fixturePath = path.join(resolvedTemporaryDirectory, `${directoryNamespace}-${getId()}/`);
 

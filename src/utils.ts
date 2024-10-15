@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 
-export const temporaryDirectory = fs.realpathSync(os.tmpdir());
+export const osTemporaryDirectory = fs.realpathSync(os.tmpdir());
 export const directoryNamespace = `fs-fixture-${Date.now()}`;
 
 let id = 0;
