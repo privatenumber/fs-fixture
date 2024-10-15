@@ -53,6 +53,15 @@ type File = {
 	content: string;
 };
 
+export type CreateFixtureOptions = {
+
+	/**
+	 * The temporary directory to create the fixtures in.
+	 * Defaults to `os.tmpdir()`.
+	 */
+	tempDir?: string;
+};
+
 const flattenFileTree = (
 	fileTree: FileTree,
 	pathPrefix: string,
@@ -100,8 +109,13 @@ const flattenFileTree = (
 
 export const createFixture = async (
 	source?: string | FileTree,
+	options?: CreateFixtureOptions,
 ) => {
-	const fixturePath = path.join(temporaryDirectory, `${directoryNamespace}-${getId()}/`);
+	const resolvedTemporaryDirectory = options?.tempDir
+		? path.resolve(options.tempDir)
+		: temporaryDirectory;
+
+	const fixturePath = path.join(resolvedTemporaryDirectory, `${directoryNamespace}-${getId()}/`);
 
 	await fs.mkdir(fixturePath, {
 		recursive: true,
