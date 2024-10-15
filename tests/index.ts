@@ -133,7 +133,7 @@ describe('fs-fixture', ({ test }) => {
 	});
 
 	test('custom temporary directory', async () => {
-		const customTemporaryDirectory = path.join(await fs.realpath(os.tmpdir()), 'custom-dir-' + Date.now());
+		const customTemporaryDirectory = path.join(await fs.realpath(os.tmpdir()), `custom-dir-${Date.now()}`);
 
 		const fixture = await createFixture({}, {
 			tempDir: customTemporaryDirectory,
