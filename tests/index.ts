@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { describe, expect } from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
@@ -129,5 +130,21 @@ describe('fs-fixture', ({ test }) => {
 			expect(await exists(fixturePath)).toBe(true);
 		}
 		expect(await exists(fixturePath)).toBe(false);
+	});
+
+	test('custom temporary directory', async () => {
+		const customTemporaryDirectory = path.join(await fs.realpath(os.tmpdir()), 'custom-dir-' + Date.now());
+
+		const fixture = await createFixture({}, {
+			tempDir: customTemporaryDirectory,
+		});
+
+		expect(await fixture.exists()).toBe(true);
+		expect(fixture.getPath().startsWith(customTemporaryDirectory)).toBe(true);
+
+		await fs.rm(customTemporaryDirectory, {
+			recursive: true,
+			force: true,
+		});
 	});
 });
