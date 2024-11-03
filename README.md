@@ -106,6 +106,13 @@ Default: `os.tmpdir()`
 
 The directory where the fixture will be created.
 
+
+##### templateFilter
+
+Type: `(source: string, destination: string) => boolean | Promise<boolean>`
+
+Function to filter files to copy when using a template path. Return `true` to copy the item, `false` to ignore it.
+
 ### Types
 #### FileTree
 

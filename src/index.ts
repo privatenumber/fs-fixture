@@ -1,5 +1,6 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import type { CopyOptions } from 'node:fs';
+import path from 'node:path';
 import { FsFixture } from './fs-fixture.js';
 import {
 	osTemporaryDirectory,
@@ -8,6 +9,8 @@ import {
 } from './utils';
 
 export { type FsFixtureType as FsFixture } from './fs-fixture.js';
+
+type FilterFunction = CopyOptions['filter'];
 
 type SymlinkType = 'file' | 'dir' | 'junction';
 
@@ -60,6 +63,12 @@ export type CreateFixtureOptions = {
 	 * Defaults to `os.tmpdir()`.
 	 */
 	tempDir?: string;
+
+	/**
+	 * Function to filter files to copy when using a template path.
+	 * Return `true` to copy the item, `false` to ignore it.
+	 */
+	templateFilter?: FilterFunction;
 };
 
 const flattenFileTree = (
@@ -129,7 +138,7 @@ export const createFixture = async (
 				fixturePath,
 				{
 					recursive: true,
-					// filter: source => !path.basename(source).startsWith('.'),
+					filter: options?.templateFilter,
 				},
 			);
 		} else if (typeof source === 'object') {
