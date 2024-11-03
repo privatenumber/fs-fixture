@@ -86,7 +86,7 @@ await using fixture = await createFixture({ file: 'hello' })
 
 ## API
 
-### createFixture(source)
+### createFixture(source, options)
 
 An async function that creates a fixture from the `source` you pass in, and returns a `FsFixture` instance.
 
@@ -95,6 +95,16 @@ Type: `string | FileTree`
 
 Path to a template fixture path, or a `FileTree` object that represents the fixture content.
 
+
+#### options
+
+##### tempDir
+
+Type: `string`
+
+Default: `os.tmpdir()`
+
+The directory where the fixture will be created.
 
 ### Types
 #### FileTree
