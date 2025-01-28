@@ -166,6 +166,11 @@ class FsFixture {
     rm(subpath?: string): Promise<void>
 
     /**
+    Copy a file to the fixture directory. Pass in a subpath destination.
+    */
+    copyFile(filePath: string, subpath?: string): Promise<void>
+
+    /**
     Create a file in the fixture directory.
     */
     writeFile(filePath: string, content: string): Promise<void>

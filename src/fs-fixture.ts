@@ -51,6 +51,17 @@ export class FsFixture {
 	}
 
 	/**
+	Copy a file to the fixture directory. Pass in a subpath destination.
+	*/
+	copyFile(filePath: string, subpath?: string) {
+		subpath ??= path.basename(filePath)
+		return fs.copyFile(
+			filePath,
+			this.getPath(subpath),
+		);
+	}
+
+	/**
 	Create a file in the fixture directory.
 	*/
 	writeFile(filePath: string, content: string) {
