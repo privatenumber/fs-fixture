@@ -59,8 +59,8 @@ describe('fs-fixture', ({ test }) => {
 
 		expect<FsFixture>(fixture);
 
-		const filePathA = path.join(fixture.path, 'directory/a');
-		const filePathB = path.join(fixture.path, 'directory/b');
+		const filePathA = fixture.getPath('directory/a');
+		const filePathB = fixture.getPath('directory/b');
 
 		// exists
 		expect(await fixture.exists('directory/a')).toBe(true);
@@ -76,6 +76,9 @@ describe('fs-fixture', ({ test }) => {
 			filePath: fixture.getPath('directory/c'),
 		}));
 		expect(await fixture.readFile('directory/d', 'utf8')).toBe('a');
+
+		await fixture.cp(filePathA, 'directory/a-copy');
+		expect(await fixture.readFile('directory/a-copy', 'utf8')).toBe('a');
 
 		// rm file
 		await fixture.rm('directory/a');
@@ -95,8 +98,8 @@ describe('fs-fixture', ({ test }) => {
 
 		expect<FsFixture>(fixture);
 
-		const filePathA = path.join(fixture.path, 'a');
-		const filePathB = path.join(fixture.path, 'directory/b');
+		const filePathA = fixture.getPath('a');
+		const filePathB = fixture.getPath('directory/b');
 
 		// exists
 		expect(await fixture.exists('a')).toBe(true);

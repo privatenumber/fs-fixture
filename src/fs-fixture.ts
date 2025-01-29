@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
 
 if (typeof Symbol.asyncDispose !== 'symbol') {
@@ -48,6 +49,21 @@ export class FsFixture {
 			recursive: true,
 			force: true,
 		});
+	}
+
+	/**
+	Copy a path into the fixture directory.
+	*/
+	cp(
+		sourcePath: string,
+		destinationSubpath: string,
+		options?: CopyOptions,
+	) {
+		return fs.cp(
+			sourcePath,
+			this.getPath(destinationSubpath),
+			options,
+		);
 	}
 
 	/**
