@@ -52,15 +52,15 @@ export class FsFixture {
 	}
 
 	/**
-	Copy a file into the fixture directory.
+	Copy a path into the fixture directory.
 	*/
 	copyTo(
-		sourceFilePath: string,
+		sourcePath: string,
 		destinationSubpath: string,
 		options?: CopyOptions,
 	) {
 		return fs.cp(
-			sourceFilePath,
+			sourcePath,
 			this.getPath(destinationSubpath),
 			options,
 		);
