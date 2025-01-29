@@ -54,7 +54,7 @@ export class FsFixture {
 	/**
 	Copy a path into the fixture directory.
 	*/
-	copyTo(
+	cp(
 		sourcePath: string,
 		destinationSubpath: string,
 		options?: CopyOptions,
