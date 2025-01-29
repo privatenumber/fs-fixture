@@ -54,7 +54,7 @@ export class FsFixture {
 	Copy a file into the fixture directory.
 	If no destination is provided, the file is copied to the root using its filename.
 	*/
-	copyFile(filePath: string, subpath?: string) {
+	copyTo(filePath: string, subpath?: string) {
 		subpath ??= path.basename(filePath);
 		return fs.copyFile(
 			filePath,
