@@ -167,9 +167,8 @@ class FsFixture {
 
     /**
     Copy a file into the fixture directory.
-    If no destination is provided, the file is copied to the root using its filename.
     */
-    copyTo(filePath: string, subpath?: string): Promise<void>
+    copyTo(sourceFilePath: string, destinationSubpath?: string): Promise<void>
 
     /**
     Create a file in the fixture directory.
