@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
 
 if (typeof Symbol.asyncDispose !== 'symbol') {
@@ -54,11 +55,15 @@ export class FsFixture {
 	Copy a file into the fixture directory.
 	If no destination is provided, the file is copied to the root using its filename.
 	*/
-	copyTo(filePath: string, subpath?: string) {
-		subpath ??= path.basename(filePath);
-		return fs.copyFile(
-			filePath,
-			this.getPath(subpath),
+	copyTo(
+		sourceFilePath: string,
+		destinationSubpath: string,
+		options?: CopyOptions,
+	) {
+		return fs.cp(
+			sourceFilePath,
+			this.getPath(destinationSubpath),
+			options,
 		);
 	}
 
