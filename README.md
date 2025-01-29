@@ -13,7 +13,7 @@ Tiny (`560 B` gzipped) and no dependencies!
 
 ### Example
 ```ts
-import fs from 'fs/promises'
+import fs from 'node:fs/promises'
 import { createFixture } from 'fs-fixture'
 
 const fixture = await createFixture({
