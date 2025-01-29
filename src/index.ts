@@ -153,6 +153,8 @@ export const createFixture = async (
 					await fs.mkdir(path.dirname(file.path!), { recursive: true });
 					if (file instanceof Symlink) {
 						await fs.symlink(file.target, file.path!, file.type);
+					} else if (file.content === null) {
+						await fs.mkdir(file.path, { recursive: true });
 					} else {
 						await fs.writeFile(file.path, file.content);
 					}
