@@ -1,10 +1,12 @@
 {
 	"compilerOptions": {
-		"lib": ["ESNext"],
+		"lib": [
+			"ESNext",
+		],
 		"module": "Preserve",
 		"strict": true,
 		"noEmit": true,
 		"esModuleInterop": true,
-		"isolatedModules": true
+		"isolatedModules": true,
 	},
 }

@@ -80,6 +80,12 @@ describe('fs-fixture', ({ test }) => {
 		await fixture.cp(filePathA, 'directory/a-copy');
 		expect(await fixture.readFile('directory/a-copy', 'utf8')).toBe('a');
 
+		await fixture.cp(filePathA);
+		expect(await fixture.readFile('a', 'utf8')).toBe('a');
+
+		await fixture.cp(filePathA, 'directory2/');
+		expect(await fixture.readFile('directory2/a', 'utf8')).toBe('a');
+
 		// rm file
 		await fixture.rm('directory/a');
 
