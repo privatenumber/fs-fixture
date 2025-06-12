@@ -15,8 +15,8 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
       lintroll:
-        specifier: ^1.15.0
-        version: 1.15.0(@typescript-eslint/utils@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint@9.28.0))(typescript@5.8.3)
+        specifier: ^1.16.1
+        version: 1.16.1(@typescript-eslint/utils@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint@9.28.0))(typescript@5.8.3)
       manten:
         specifier: ^1.3.0
         version: 1.3.0
@@ -1813,8 +1813,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  lintroll@1.15.0:
-    resolution: {integrity: sha512-SaZbI0/9efPhnKiRuJyeJ/3/r9MMn7ayJbOfb9/9h0lhYlaBkZV9+tj3wpBxUvoOsOJBa4WAwk5YVBrwtKyHWw==}
+  lintroll@1.16.1:
+    resolution: {integrity: sha512-nXMHSjzDWri+gDHf1AkfKLFcVr4VJ2/7R5RikSo3yFNLqx0sK5CrBUhnmTOg6SvKkogB81vpypVrRAHD9OWHMQ==}
     hasBin: true
 
   locate-path@5.0.0:
@@ -4429,7 +4429,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  lintroll@1.15.0(@typescript-eslint/utils@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint@9.28.0))(typescript@5.8.3):
+  lintroll@1.16.1(@typescript-eslint/utils@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.34.0(eslint@9.28.0)(typescript@5.8.3))(eslint@9.28.0))(typescript@5.8.3):
     dependencies:
       '@eslint-community/eslint-plugin-eslint-comments': 4.5.0(eslint@9.28.0)
       '@eslint/js': 9.28.0

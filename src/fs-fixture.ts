@@ -73,6 +73,15 @@ export class FsFixture {
 	}
 
 	/**
+	Create a new folder in the fixture directory.
+	*/
+	mkdir(folderPath: string) {
+		return fs.mkdir(this.getPath(folderPath), {
+			recursive: true,
+		});
+	}
+
+	/**
 	Create a file in the fixture directory.
 	*/
 	writeFile(filePath: string, content: string) {

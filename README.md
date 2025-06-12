@@ -171,6 +171,11 @@ class FsFixture {
     cp(sourcePath: string, destinationSubpath?: string): Promise<void>
 
     /**
+    Create a new folder in the fixture directory.
+    */
+    mkdir(folderPath: string): Promise<void>
+
+    /**
     Create a file in the fixture directory.
     */
     writeFile(filePath: string, content: string): Promise<void>
