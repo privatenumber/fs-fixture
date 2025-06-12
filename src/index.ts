@@ -6,55 +6,14 @@ import {
 	osTemporaryDirectory,
 	directoryNamespace,
 	getId,
-} from './utils';
+} from './utils/temporary-directory.js';
+import {
+	type FileTree, type ApiBase, flattenFileTree, Directory, File, Symlink,
+} from './utils/flatten-file-tree.js';
 
 export { type FsFixtureType as FsFixture } from './fs-fixture.js';
 
 type FilterFunction = CopyOptions['filter'];
-
-type SymlinkType = 'file' | 'dir' | 'junction';
-
-class Symlink {
-	target: string;
-
-	type?: SymlinkType;
-
-	path?: string;
-
-	constructor(
-		target: string,
-		type?: SymlinkType,
-	) {
-		this.target = target;
-		this.type = type;
-	}
-}
-
-type ApiBase = {
-	fixturePath: string;
-	getPath(...subpaths: string[]): string;
-	symlink(
-		targetPath: string,
-
-		/**
-		 * Symlink type for Windows. Defaults to auto-detect by Node.
-		 */
-		type?: SymlinkType,
-	): Symlink;
-};
-
-type Api = ApiBase & {
-	filePath: string;
-};
-
-export type FileTree = {
-	[path: string]: string | FileTree | ((api: Api) => string | Symlink);
-};
-
-type File = {
-	path: string;
-	content: string;
-};
 
 export type CreateFixtureOptions = {
 
@@ -69,51 +28,6 @@ export type CreateFixtureOptions = {
 	 * Return `true` to copy the item, `false` to ignore it.
 	 */
 	templateFilter?: FilterFunction;
-};
-
-const flattenFileTree = (
-	fileTree: FileTree,
-	pathPrefix: string,
-	apiBase: ApiBase,
-) => {
-	const files: (File | Symlink)[] = [];
-
-	for (const subPath in fileTree) {
-		if (!Object.hasOwn(fileTree, subPath)) {
-			continue;
-		}
-
-		const filePath = path.join(pathPrefix, subPath);
-
-		let fileContent = fileTree[subPath];
-		if (typeof fileContent === 'function') {
-			const api: Api = Object.assign(
-				Object.create(apiBase),
-				{ filePath },
-			);
-			const result = fileContent(api);
-			if (result instanceof Symlink) {
-				result.path = filePath;
-				files.push(result);
-				continue;
-			} else {
-				fileContent = result;
-			}
-		}
-
-		if (typeof fileContent === 'string') {
-			files.push({
-				path: filePath,
-				content: fileContent,
-			});
-		} else { // Directory
-			files.push(
-				...flattenFileTree(fileContent, filePath, apiBase),
-			);
-		}
-	}
-
-	return files;
 };
 
 export const createFixture = async (
@@ -150,10 +64,13 @@ export const createFixture = async (
 			};
 			await Promise.all(
 				flattenFileTree(source, fixturePath, api).map(async (file) => {
-					await fs.mkdir(path.dirname(file.path!), { recursive: true });
-					if (file instanceof Symlink) {
+					if (file instanceof Directory) {
+						await fs.mkdir(file.path, { recursive: true });
+					} else if (file instanceof Symlink) {
+						await fs.mkdir(path.dirname(file.path!), { recursive: true });
 						await fs.symlink(file.target, file.path!, file.type);
-					} else {
+					} else if (file instanceof File) {
+						await fs.mkdir(path.dirname(file.path!), { recursive: true });
 						await fs.writeFile(file.path, file.content);
 					}
 				}),

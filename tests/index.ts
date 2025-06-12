@@ -55,6 +55,7 @@ describe('fs-fixture', ({ test }) => {
 				}),
 				d: ({ symlink }) => symlink('../directory/a'),
 			},
+			'emptyDirectory/a': {},
 		});
 
 		expect<FsFixture>(fixture);
@@ -65,6 +66,7 @@ describe('fs-fixture', ({ test }) => {
 		// exists
 		expect(await fixture.exists('directory/a')).toBe(true);
 		expect(await exists(filePathA)).toBe(true);
+		expect(await fixture.exists('emptyDirectory/a')).toBe(true);
 
 		// readFile
 		expect(await fs.readFile(filePathA, 'utf8')).toBe('a');
@@ -80,9 +82,14 @@ describe('fs-fixture', ({ test }) => {
 		await fixture.cp(filePathA, 'directory/a-copy');
 		expect(await fixture.readFile('directory/a-copy', 'utf8')).toBe('a');
 
+		await fixture.cp(filePathA);
+		expect(await fixture.readFile('a', 'utf8')).toBe('a');
+
+		await fixture.cp(filePathA, 'directory2/');
+		expect(await fixture.readFile('directory2/a', 'utf8')).toBe('a');
+
 		// rm file
 		await fixture.rm('directory/a');
-
 		expect(await fixture.exists('directory/a')).toBe(false);
 
 		// rm entire fixture
