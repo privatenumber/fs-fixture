@@ -59,10 +59,12 @@ export class FsFixture {
 		destinationSubpath?: string,
 		options?: CopyOptions,
 	) {
-		if (destinationSubpath?.endsWith(path.sep)) {
+		if (!destinationSubpath) {
+			destinationSubpath = path.basename(sourcePath);
+		} else if (destinationSubpath.endsWith(path.sep)) {
 			destinationSubpath += path.basename(sourcePath);
 		}
-		destinationSubpath ??= path.basename(sourcePath);
+
 		return fs.cp(
 			sourcePath,
 			this.getPath(destinationSubpath),
