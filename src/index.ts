@@ -51,10 +51,28 @@ export type FileTree = {
 	[path: string]: string | FileTree | ((api: Api) => string | Symlink);
 };
 
-type File = {
+class Path {
 	path: string;
+	constructor(path: string) {
+		this.path = path;
+	}
+}
+
+class Directory extends Path {}
+
+class File extends Path {
 	content: string;
-};
+	constructor(path: string, content: string) {
+		super(path);
+		this.content = content;
+	}
+}
+
+// type File = {
+// 	type: 'file';
+// 	path: string;
+// 	content: string;
+// };
 
 export type CreateFixtureOptions = {
 
@@ -76,7 +94,7 @@ const flattenFileTree = (
 	pathPrefix: string,
 	apiBase: ApiBase,
 ) => {
-	const files: (File | Symlink)[] = [];
+	const files: (File | Directory | Symlink)[] = [];
 
 	for (const subPath in fileTree) {
 		if (!Object.hasOwn(fileTree, subPath)) {
@@ -102,11 +120,10 @@ const flattenFileTree = (
 		}
 
 		if (typeof fileContent === 'string') {
-			files.push({
-				path: filePath,
-				content: fileContent,
-			});
-		} else { // Directory
+			files.push(new File(filePath, fileContent));
+		} else {
+			// Directory
+			files.push(new Directory(filePath));
 			files.push(
 				...flattenFileTree(fileContent, filePath, apiBase),
 			);
@@ -150,12 +167,13 @@ export const createFixture = async (
 			};
 			await Promise.all(
 				flattenFileTree(source, fixturePath, api).map(async (file) => {
-					await fs.mkdir(path.dirname(file.path!), { recursive: true });
-					if (file instanceof Symlink) {
-						await fs.symlink(file.target, file.path!, file.type);
-					} else if (file.content === null) {
+					if (file instanceof Directory) {
 						await fs.mkdir(file.path, { recursive: true });
-					} else {
+					} else if (file instanceof Symlink) {
+						await fs.mkdir(path.dirname(file.path!), { recursive: true });
+						await fs.symlink(file.target, file.path!, file.type);
+					} else if (file instanceof File) {
+						await fs.mkdir(path.dirname(file.path!), { recursive: true });
 						await fs.writeFile(file.path, file.content);
 					}
 				}),

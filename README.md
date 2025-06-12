@@ -12,18 +12,19 @@ Simple API to create disposable test fixtures on disk.
 Tiny (`560 B` gzipped) and no dependencies!
 
 ### Example
+
 ```ts
-import fs from 'node:fs/promises'
-import { createFixture } from 'fs-fixture'
+import fs from "node:fs/promises";
+import { createFixture } from "fs-fixture";
 
 const fixture = await createFixture({
-    'dir-a': {
-        'file-b': 'hello world'
-    }
-})
+	"dir-a": {
+		"file-b": "hello world",
+	},
+});
 
-const content = await fs.readFile(fixture.getPath('dir-a/file-b'))
-console.log(content)
+const content = await fs.readFile(fixture.getPath("dir-a/file-b"));
+console.log(content);
 ```
 
 <p align="center">
@@ -37,27 +38,27 @@ console.log(content)
 Pass in an object representing the file structure:
 
 ```ts
-import { createFixture } from 'fs-fixture'
+import { createFixture } from "fs-fixture";
 
 const fixture = await createFixture({
-    // Nested directory syntax
-    'dir-a': {
-        'file-a.txt': 'hello world',
-        'dir-b': {
-            'file-b.txt': ({ fixturePath }) => `Fixture path: ${fixturePath}`,
-            'symlink-c': ({ symlink }) => symlink('../file-a.txt')
-        }
-    },
+	// Nested directory syntax
+	"dir-a": {
+		"file-a.txt": "hello world",
+		"dir-b": {
+			"file-b.txt": ({ fixturePath }) => `Fixture path: ${fixturePath}`,
+			"symlink-c": ({ symlink }) => symlink("../file-a.txt"),
+		},
+	},
 
-    // Alternatively, use the directory path syntax - Same as above
-    'dir-a/dir-b/file-b.txt': 'goodbye world'
-})
+	// Alternatively, use the directory path syntax - Same as above
+	"dir-a/dir-b/file-b.txt": "goodbye world",
+});
 
 // Interact with the fixture
-console.log(fixture.path)
+console.log(fixture.path);
 
 // Cleanup fixture
-await fixture.rm()
+await fixture.rm();
 ```
 
 ### Template path input
@@ -66,12 +67,12 @@ Pass in a path to a test fixture template directory to make a copy of it.
 
 ```ts
 // Pass in a path to a fixture template path, and it will make a copy of it
-const fixture = await createFixture('./fixtures/template-a')
+const fixture = await createFixture("./fixtures/template-a");
 
 /* Your test code here... */
 
 // Cleanup fixture
-await fixture.rm()
+await fixture.rm();
 ```
 
 ### `using` keyword (Explicit Resource Management)
@@ -91,10 +92,10 @@ await using fixture = await createFixture({ file: 'hello' })
 An async function that creates a fixture from the `source` you pass in, and returns a `FsFixture` instance.
 
 #### source
+
 Type: `string | FileTree`
 
 Path to a template fixture path, or a `FileTree` object that represents the fixture content.
-
 
 #### options
 
@@ -106,7 +107,6 @@ Default: `os.tmpdir()`
 
 The directory where the fixture will be created.
 
-
 ##### templateFilter
 
 Type: `(source: string, destination: string) => boolean | Promise<boolean>`
@@ -114,81 +114,85 @@ Type: `(source: string, destination: string) => boolean | Promise<boolean>`
 Function to filter files to copy when using a template path. Return `true` to copy the item, `false` to ignore it.
 
 ### Types
+
 #### FileTree
 
 ```ts
 type FileTree = {
-    [path: string]: string | FileTree | ((api: Api) => string)
-}
+	[path: string]: string | FileTree | ((api: Api) => string);
+};
 
 type Api = {
-    // Fixture root path
-    fixturePath: string
+	// Fixture root path
+	fixturePath: string;
 
-    // Current file path
-    filePath: string
+	// Current file path
+	filePath: string;
 
-    // Get path from the root of the fixture
-    getPath: (...subpaths: string[]) => string
+	// Get path from the root of the fixture
+	getPath: (...subpaths: string[]) => string;
 
-    // Create a symlink
-    symlink: (target: string) => Symlink
-}
+	// Create a symlink
+	symlink: (target: string) => Symlink;
+};
 ```
 
 #### FsFixture
 
 ```ts
 class FsFixture {
-    /**
+	/**
     Path to the fixture directory.
     */
-    readonly path: string
+	readonly path: string;
 
-    /**
+	/**
     Create a Fixture instance from a path. Does not create the fixture directory.
     */
-    constructor(fixturePath: string)
+	constructor(fixturePath: string);
 
-    /**
+	/**
     Get the full path to a subpath in the fixture directory.
     */
-    getPath(...subpaths: string[]): string
+	getPath(...subpaths: string[]): string;
 
-    /**
+	/**
     Check if the fixture exists. Pass in a subpath to check if it exists.
     */
-    exists(subpath?: string): Promise<boolean>
+	exists(subpath?: string): Promise<boolean>;
 
-    /**
+	/**
     Delete the fixture directory. Pass in a subpath to delete it.
     */
-    rm(subpath?: string): Promise<void>
+	rm(subpath?: string): Promise<void>;
 
-    /**
+	/**
     Copy a path into the fixture directory.
     */
-    cp(sourcePath: string, destinationSubpath?: string): Promise<void>
+	cp(sourcePath: string, destinationSubpath?: string): Promise<void>;
 
-    /**
-    Create an empty folder in the fixture directory.
+	/**
+    Create a new folder in the fixture directory.
     */
-    mkdir(folderPath: string): Promise<void>
+	mkdir(folderPath: string): Promise<void>;
 
-    /**
+	/**
     Create a file in the fixture directory.
     */
-    writeFile(filePath: string, content: string): Promise<void>
+	writeFile(filePath: string, content: string): Promise<void>;
 
-    /**
+	/**
     Create a JSON file in the fixture directory.
     */
-    writeJson(filePath: string, json: unknown): Promise<void>
+	writeJson(filePath: string, json: unknown): Promise<void>;
 
-    /**
+	/**
     Read a file from the fixture directory.
     */
-    readFile(filePath: string, encoding?: BufferEncoding): Promise<string | Buffer>
+	readFile(
+		filePath: string,
+		encoding?: BufferEncoding
+	): Promise<string | Buffer>;
 }
 ```
 

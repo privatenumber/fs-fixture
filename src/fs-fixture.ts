@@ -73,7 +73,7 @@ export class FsFixture {
 	}
 
 	/**
-	Create an empty folder in the fixture directory.
+	Create a new folder in the fixture directory.
 	*/
 	mkdir(folderPath: string) {
 		return fs.mkdir(this.getPath(folderPath), {
