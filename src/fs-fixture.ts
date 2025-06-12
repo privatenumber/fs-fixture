@@ -17,6 +17,8 @@ export class FsFixture {
 	*/
 	readonly path: string;
 
+	private cleanUp = true;
+
 	/**
 	Create a Fixture instance from a path. Does not create the fixture directory.
 	*/
@@ -109,12 +111,19 @@ export class FsFixture {
 		);
 	}
 
+	debug() {
+		console.log(`Fixture path: ${this.path}`);
+		this.cleanUp = false;
+	}
+
 	/**
 	 * Resource management cleanup
 	 * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html
 	 */
 	async [Symbol.asyncDispose]() {
-		await this.rm();
+		if (this.cleanUp) {
+			await this.rm();
+		}
 	}
 }
 
