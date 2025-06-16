@@ -11,6 +11,7 @@ import {
 	type FileTree, type ApiBase, flattenFileTree, Directory, File, Symlink,
 } from './utils/flatten-file-tree.js';
 
+export { type FileTree };
 export { type FsFixtureType as FsFixture } from './fs-fixture.js';
 
 type FilterFunction = CopyOptions['filter'];
