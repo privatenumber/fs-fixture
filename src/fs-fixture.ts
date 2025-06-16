@@ -126,9 +126,35 @@ export class FsFixture {
 		);
 	}
 
-	debug() {
-		console.log(`Fixture path: ${this.path}`);
-		this.cleanUp = false;
+	debug(callback?: () => unknown | Promise<unknown>) {
+		const debugMode = (error?: unknown) => {
+			console.log(`Fixture path: ${this.path}`);
+			this.cleanUp = false;
+			if (error) {
+				throw error;
+			}
+		};
+
+		if (!callback) {
+			return debugMode();
+		}
+
+		let result: unknown | Promise<unknown>;
+		try {
+			result = callback();
+		} catch (error) {
+			debugMode(error);
+			return;
+		}
+
+		if (
+			result !== null
+			&& typeof result === 'object'
+			&& 'catch' in result
+			&& typeof result.catch === 'function'
+		) {
+			return result.catch(debugMode);
+		}
 	}
 
 	/**
