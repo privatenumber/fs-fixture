@@ -196,13 +196,15 @@ class FsFixture {
 
     /**
     Read and parse a JSON file from the fixture directory.
+    Supports generic type parameter for type-safe results.
     */
-    readJson(filePath: string): Promise<unknown>
+    readJson<T = unknown>(filePath: string): Promise<T>
 
     /**
     Create a JSON file in the fixture directory.
+    Optionally specify indentation (spaces or tabs).
     */
-    writeJson(filePath: string, json: unknown): Promise<void>
+    writeJson(filePath: string, json: unknown, space?: string | number): Promise<void>
 }
 ```
 

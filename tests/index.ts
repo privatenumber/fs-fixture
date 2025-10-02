@@ -180,6 +180,56 @@ describe('fs-fixture', ({ test }) => {
 		expect(await exists(fixture.path)).toBe(false);
 	});
 
+	test('JSON operations', async () => {
+		const fixture = await createFixture();
+
+		// Test writeJson with default spacing (2 spaces)
+		await fixture.writeJson('default.json', {
+			name: 'test',
+			value: 123,
+		});
+		const defaultContent = await fixture.readFile('default.json', 'utf8');
+		expect(defaultContent).toBe('{\n  "name": "test",\n  "value": 123\n}');
+
+		// Test writeJson with custom spacing (4 spaces)
+		await fixture.writeJson('fourspace.json', {
+			name: 'test',
+			value: 123,
+		}, 4);
+		const fourSpaceContent = await fixture.readFile('fourspace.json', 'utf8');
+		expect(fourSpaceContent).toContain('"name"');
+		expect(fourSpaceContent).toContain('"value"');
+		// Verify 4-space indentation exists
+		expect(fourSpaceContent.includes('    "name"')).toBe(true);
+
+		// Test writeJson with tab indentation
+		await fixture.writeJson('tab.json', { name: 'test' }, '\t');
+		const tabContent = await fixture.readFile('tab.json', 'utf8');
+		expect(tabContent).toBe('{\n\t"name": "test"\n}');
+
+		// Test writeJson with minified (no spacing)
+		await fixture.writeJson('minified.json', {
+			name: 'test',
+			value: 123,
+		}, 0);
+		const minifiedContent = await fixture.readFile('minified.json', 'utf8');
+		expect(minifiedContent).toBe('{"name":"test","value":123}');
+
+		// Test readJson with generic type
+		type Config = { name: string;
+			value: number; };
+		const data = await fixture.readJson<Config>('default.json');
+		expect<Config>(data);
+		expect(data.name).toBe('test');
+		expect(data.value).toBe(123);
+
+		// Test readJson without generic type (returns unknown)
+		const unknownData = await fixture.readJson('default.json');
+		expect<unknown>(unknownData);
+
+		await fixture.rm();
+	});
+
 	test('explicit resource management', async () => {
 		let fixturePath: string;
 

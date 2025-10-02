@@ -166,23 +166,45 @@ export class FsFixture {
 	 *
 	 * @param filePath - The JSON file path within the fixture to read
 	 * @returns Promise resolving to the parsed JSON content
+	 *
+	 * @example
+	 * ```ts
+	 * const data = await fixture.readJson<{ name: string }>('config.json')
+	 * console.log(data.name) // Typed as string
+	 * ```
 	 */
-	async readJson(filePath: string) {
+	async readJson<T = unknown>(filePath: string): Promise<T> {
 		const content = await this.readFile(filePath, 'utf8');
-		return JSON.parse(content) as unknown;
+		return JSON.parse(content) as T;
 	}
 
 	/**
 	 * Create or overwrite a JSON file in the fixture directory.
 	 *
 	 * @param filePath - The JSON file path within the fixture to write
-	 * @param json - The data to serialize as JSON (with 2-space indentation)
+	 * @param json - The data to serialize as JSON
+	 * @param space - Number of spaces or string to use for indentation. Defaults to 2.
 	 * @returns Promise that resolves when file is written
+	 *
+	 * @example
+	 * ```ts
+	 * // Default 2-space indentation
+	 * await fixture.writeJson('config.json', { key: 'value' })
+	 *
+	 * // 4-space indentation
+	 * await fixture.writeJson('config.json', { key: 'value' }, 4)
+	 *
+	 * // Tab indentation
+	 * await fixture.writeJson('config.json', { key: 'value' }, '\t')
+	 *
+	 * // Minified (no formatting)
+	 * await fixture.writeJson('config.json', { key: 'value' }, 0)
+	 * ```
 	 */
-	writeJson(filePath: string, json: unknown) {
+	writeJson(filePath: string, json: unknown, space: string | number = 2) {
 		return this.writeFile(
 			filePath,
-			JSON.stringify(json, null, 2),
+			JSON.stringify(json, null, space),
 		);
 	}
 
