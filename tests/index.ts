@@ -56,6 +56,8 @@ describe('fs-fixture', ({ test }) => {
 				d: ({ symlink }) => symlink('../directory/a'),
 			},
 			'emptyDirectory/a': {},
+			'buffer-file': Buffer.from('binary content'),
+			'buffer-from-function': () => Buffer.from('dynamic binary'),
 		});
 
 		expect<FsFixture>(fixture);
@@ -78,6 +80,12 @@ describe('fs-fixture', ({ test }) => {
 			filePath: fixture.getPath('directory/c'),
 		}));
 		expect(await fixture.readFile('directory/d', 'utf8')).toBe('a');
+
+		// Test buffer files
+		expect(await fixture.readFile('buffer-file')).toEqual(Buffer.from('binary content'));
+		expect(await fixture.readFile('buffer-file', 'utf8')).toBe('binary content');
+		expect(await fixture.readFile('buffer-from-function')).toEqual(Buffer.from('dynamic binary'));
+		expect(await fixture.readFile('buffer-from-function', 'utf8')).toBe('dynamic binary');
 
 		await fixture.cp(filePathA, 'directory/a-copy');
 		expect(await fixture.readFile('directory/a-copy', 'utf8')).toBe('a');

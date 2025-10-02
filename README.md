@@ -50,7 +50,11 @@ const fixture = await createFixture({
     },
 
     // Alternatively, use the directory path syntax - Same as above
-    'dir-a/dir-b/file-b.txt': 'goodbye world'
+    'dir-a/dir-b/file-b.txt': 'goodbye world',
+
+    // Binary files using Buffer
+    'binary-file.bin': Buffer.from('binary content'),
+    'dynamic-buffer': () => Buffer.from('generated binary')
 })
 
 // Interact with the fixture
@@ -118,7 +122,7 @@ Function to filter files to copy when using a template path. Return `true` to co
 
 ```ts
 type FileTree = {
-    [path: string]: string | FileTree | ((api: Api) => string)
+    [path: string]: string | Buffer | FileTree | ((api: Api) => string | Buffer | Symlink)
 }
 
 type Api = {

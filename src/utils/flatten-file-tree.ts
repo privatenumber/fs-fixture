@@ -1,40 +1,9 @@
 import path from 'node:path';
+import { Directory } from './directory.js';
+import { File } from './file.js';
+import { Symlink, type SymlinkType } from './symlink.js';
 
-class Path {
-	path: string;
-
-	constructor(filePath: string) {
-		this.path = filePath;
-	}
-}
-
-export class Directory extends Path {}
-
-export class File extends Path {
-	content: string;
-
-	constructor(filePath: string, content: string) {
-		super(filePath);
-		this.content = content;
-	}
-}
-type SymlinkType = 'file' | 'dir' | 'junction';
-
-export class Symlink {
-	target: string;
-
-	type?: SymlinkType;
-
-	path?: string;
-
-	constructor(
-		target: string,
-		type?: SymlinkType,
-	) {
-		this.target = target;
-		this.type = type;
-	}
-}
+export { Directory, File, Symlink };
 
 export type ApiBase = {
 	fixturePath: string;
@@ -54,7 +23,7 @@ type Api = ApiBase & {
 };
 
 export type FileTree = {
-	[path: string]: string | FileTree | ((api: Api) => string | Symlink);
+	[path: string]: string | Buffer | FileTree | ((api: Api) => string | Buffer | Symlink);
 };
 
 export const flattenFileTree = (
@@ -79,15 +48,15 @@ export const flattenFileTree = (
 			);
 			const result = fileContent(api);
 			if (result instanceof Symlink) {
-				result.path = filePath;
-				files.push(result);
+				const symlink = new Symlink(result.target, result.type, filePath);
+				files.push(symlink);
 				continue;
 			} else {
 				fileContent = result;
 			}
 		}
 
-		if (typeof fileContent === 'string') {
+		if (typeof fileContent === 'string' || Buffer.isBuffer(fileContent)) {
 			files.push(new File(filePath, fileContent));
 		} else {
 			// Directory
