@@ -31,6 +31,35 @@ export type CreateFixtureOptions = {
 	templateFilter?: FilterFunction;
 };
 
+/**
+ * Create a temporary test fixture directory.
+ *
+ * @param source - Optional source to create the fixture from:
+ *   - If omitted, creates an empty fixture directory
+ *   - If a string, copies the directory at that path to the fixture
+ *   - If a FileTree object, creates files and directories from the object structure
+ * @param options - Optional configuration for fixture creation
+ * @returns Promise resolving to an FsFixture instance
+ *
+ * @example
+ * ```ts
+ * // Create empty fixture
+ * const fixture = await createFixture()
+ *
+ * // Create from object
+ * const fixture = await createFixture({
+ *   'file.txt': 'content',
+ *   'dir/nested.txt': 'nested content',
+ *   'binary.bin': Buffer.from('binary'),
+ * })
+ *
+ * // Create from template directory
+ * const fixture = await createFixture('./my-template')
+ *
+ * // Cleanup
+ * await fixture.rm()
+ * ```
+ */
 export const createFixture = async (
 	source?: string | FileTree,
 	options?: CreateFixtureOptions,

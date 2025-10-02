@@ -180,19 +180,24 @@ class FsFixture {
     mkdir(folderPath: string): Promise<void>
 
     /**
+    Read a file from the fixture directory.
+    */
+    readFile(filePath: string, encoding?: BufferEncoding): Promise<string | Buffer>
+
+    /**
     Create a file in the fixture directory.
     */
-    writeFile(filePath: string, content: string): Promise<void>
+    writeFile(filePath: string, content: string | Buffer): Promise<void>
+
+    /**
+    Read and parse a JSON file from the fixture directory.
+    */
+    readJson(filePath: string): Promise<unknown>
 
     /**
     Create a JSON file in the fixture directory.
     */
     writeJson(filePath: string, json: unknown): Promise<void>
-
-    /**
-    Read a file from the fixture directory.
-    */
-    readFile(filePath: string, encoding?: BufferEncoding): Promise<string | Buffer>
 }
 ```
 
