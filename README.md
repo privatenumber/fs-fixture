@@ -7,23 +7,51 @@
 	<a href="https://npm.im/fs-fixture"><img src="https://badgen.net/npm/v/fs-fixture"></a> <a href="https://npm.im/fs-fixture"><img src="https://badgen.net/npm/dm/fs-fixture"></a>
 </h1>
 
-Simple API to create disposable test fixtures on disk.
+Simple API to create disposable test fixtures on disk. Tiny (`1.1 kB` gzipped) with zero dependencies!
 
-Tiny (`560 B` gzipped) and no dependencies!
+### Features
+- 📁 Create files & directories from simple objects
+- 🧹 Automatic cleanup with `using` keyword
+- 📝 Built-in JSON read/write support
+- 🔗 Symlink support
+- 💾 Binary file support with Buffers
+- 🎯 TypeScript-first with full type safety
+- 🔄 File methods inherit types directly from Node.js `fs` module
 
-### Example
+## Installation
+
+```sh
+npm install fs-fixture
+```
+
+## Quick start
+
 ```ts
-import fs from 'node:fs/promises'
 import { createFixture } from 'fs-fixture'
 
+// Create a temporary fixture
 const fixture = await createFixture({
-    'dir-a': {
-        'file-b': 'hello world'
-    }
+    'package.json': JSON.stringify({ name: 'my-app' }),
+    'src/index.js': 'console.log("Hello world")'
 })
 
-const content = await fs.readFile(fixture.getPath('dir-a/file-b'))
-console.log(content)
+// Read files
+const content = await fixture.readFile('src/index.js', 'utf8')
+
+// Cleanup when done
+await fixture.rm()
+```
+
+### Auto cleanup with `using` keyword
+
+Uses TypeScript 5.2+ [Explicit Resource Management](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html) for automatic cleanup:
+
+```ts
+await using fixture = await createFixture({
+    'config.json': '{ "setting": true }'
+})
+
+// Fixture is automatically cleaned up when exiting scope
 ```
 
 <p align="center">
@@ -34,91 +62,152 @@ console.log(content)
 
 ## Usage
 
-Pass in an object representing the file structure:
+### Creating fixtures
+
+**From an object:**
+```ts
+const fixture = await createFixture({
+    'package.json': '{ "name": "test" }',
+    'src/index.js': 'export default () => {}',
+    'src/utils': {
+        'helper.js': 'export const help = () => {}'
+    }
+})
+```
+
+**From a template directory:**
+```ts
+// Copies an existing directory structure
+const fixture = await createFixture('./test-templates/basic')
+```
+
+**Empty fixture:**
+```ts
+// Create an empty temporary directory
+const fixture = await createFixture()
+```
+
+### Working with files
+
+File methods (`readFile`, `writeFile`, `readdir`) inherit their type signatures directly from Node.js `fs/promises`, preserving all overloads and type narrowing behavior.
+
+**Read files:**
+```ts
+// Read as string (type: Promise<string>)
+const text = await fixture.readFile('config.txt', 'utf8')
+
+// Read as buffer (type: Promise<Buffer>)
+const binary = await fixture.readFile('image.png')
+```
+
+**Write files:**
+```ts
+await fixture.writeFile('output.txt', 'Hello world')
+await fixture.writeFile('data.bin', Buffer.from([0x89, 0x50]))
+```
+
+**JSON operations:**
+```ts
+// Write JSON with formatting
+await fixture.writeJson('config.json', { port: 3000 })
+
+// Read and parse JSON with type safety
+type Config = { port: number }
+const config = await fixture.readJson<Config>('config.json')
+```
+
+### Working with directories
 
 ```ts
-import { createFixture } from 'fs-fixture'
+// Create directories
+await fixture.mkdir('nested/folders')
 
+// List directory contents
+const files = await fixture.readdir('src')
+
+// Copy files into fixture
+await fixture.cp('/path/to/file.txt', 'copied-file.txt')
+
+// Check if path exists
+if (await fixture.exists('optional-file.txt')) {
+    // ...
+}
+```
+
+### Advanced features
+
+**Dynamic content with functions:**
+```ts
 const fixture = await createFixture({
-    // Nested directory syntax
-    'dir-a': {
-        'file-a.txt': 'hello world',
-        'dir-b': {
-            'file-b.txt': ({ fixturePath }) => `Fixture path: ${fixturePath}`,
-            'symlink-c': ({ symlink }) => symlink('../file-a.txt')
+    'target.txt': 'original file',
+    'info.txt': ({ fixturePath }) => `Created at: ${fixturePath}`,
+    'link.txt': ({ symlink }) => symlink('./target.txt')
+})
+```
+
+**Binary files:**
+```ts
+const fixture = await createFixture({
+    'image.png': Buffer.from(imageData),
+    'generated.bin': () => Buffer.from('dynamic binary content')
+})
+```
+
+**Path syntax:**
+```ts
+const fixture = await createFixture({
+    // Nested object syntax
+    src: {
+        utils: {
+            'helper.js': 'export const help = () => {}'
         }
     },
 
-    // Alternatively, use the directory path syntax - Same as above
-    'dir-a/dir-b/file-b.txt': 'goodbye world',
-
-    // Binary files using Buffer
-    'binary-file.bin': Buffer.from('binary content'),
-    'dynamic-buffer': () => Buffer.from('generated binary')
+    // Or path syntax (creates same structure)
+    'src/utils/helper.js': 'export const help = () => {}'
 })
-
-// Interact with the fixture
-console.log(fixture.path)
-
-// Cleanup fixture
-await fixture.rm()
-```
-
-### Template path input
-
-Pass in a path to a test fixture template directory to make a copy of it.
-
-```ts
-// Pass in a path to a fixture template path, and it will make a copy of it
-const fixture = await createFixture('./fixtures/template-a')
-
-/* Your test code here... */
-
-// Cleanup fixture
-await fixture.rm()
-```
-
-### `using` keyword (Explicit Resource Management)
-
-[TypeScript 5.2](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html) supports the [Explicit Resource Management](https://github.com/tc39/proposal-explicit-resource-management) feature, which allows you to instantiate the fixture via `using`. When the fixture is declared this way, it gets automatically cleaned up when exiting the scope.
-
-```ts
-await using fixture = await createFixture({ file: 'hello' })
-
-// No need to run fixture.rm()
 ```
 
 ## API
 
-### createFixture(source, options)
+### `createFixture(source?, options?)`
 
-An async function that creates a fixture from the `source` you pass in, and returns a `FsFixture` instance.
+Creates a temporary fixture directory and returns a `FsFixture` instance.
 
-#### source
-Type: `string | FileTree`
+**Parameters:**
+- `source` (optional): String path to template directory, or `FileTree` object defining the structure
+- `options.tempDir` (optional): Custom temp directory. Defaults to `os.tmpdir()`
+- `options.templateFilter` (optional): Filter function when copying from template directory
 
-Path to a template fixture path, or a `FileTree` object that represents the fixture content.
+**Returns:** `Promise<FsFixture>`
 
+```ts
+const fixture = await createFixture()
+const fixture = await createFixture({ 'file.txt': 'content' })
+const fixture = await createFixture('./template-dir')
+const fixture = await createFixture({}, { tempDir: './custom-temp' })
+```
 
-#### options
+### `FsFixture` Methods
 
-##### tempDir
-
-Type: `string`
-
-Default: `os.tmpdir()`
-
-The directory where the fixture will be created.
-
-
-##### templateFilter
-
-Type: `(source: string, destination: string) => boolean | Promise<boolean>`
-
-Function to filter files to copy when using a template path. Return `true` to copy the item, `false` to ignore it.
+| Method | Description |
+|--------|-------------|
+| `fixture.path` | Absolute path to the fixture directory |
+| `getPath(...paths)` | Get absolute path to file/directory in fixture |
+| `exists(path?)` | Check if file/directory exists |
+| `rm(path?)` | Delete file/directory (or entire fixture if no path) |
+| `readFile(path, encoding?)` | Read file as string or Buffer |
+| `writeFile(path, content)` | Write string or Buffer to file |
+| `readJson<T>(path)` | Read and parse JSON file |
+| `writeJson(path, data, space?)` | Write JSON with optional formatting |
+| `readdir(path, options?)` | List directory contents |
+| `mkdir(path)` | Create directory (recursive) |
+| `cp(source, dest?)` | Copy file/directory into fixture |
 
 ### Types
-#### FileTree
+
+<details>
+<summary><strong>FileTree</strong></summary>
 
 ```ts
 type FileTree = {
@@ -126,87 +215,13 @@ type FileTree = {
 }
 
 type Api = {
-    // Fixture root path
-    fixturePath: string
-
-    // Current file path
-    filePath: string
-
-    // Get path from the root of the fixture
-    getPath: (...subpaths: string[]) => string
-
-    // Create a symlink
-    symlink: (target: string) => Symlink
+    fixturePath: string // Fixture root path
+    filePath: string // Current file path
+    getPath: (...paths: string[]) => string // Get path from fixture root
+    symlink: (target: string) => Symlink // Create a symlink
 }
 ```
-
-#### FsFixture
-
-```ts
-class FsFixture {
-    /**
-    Path to the fixture directory.
-    */
-    readonly path: string
-
-    /**
-    Create a Fixture instance from a path. Does not create the fixture directory.
-    */
-    constructor(fixturePath: string)
-
-    /**
-    Get the full path to a subpath in the fixture directory.
-    */
-    getPath(...subpaths: string[]): string
-
-    /**
-    Check if the fixture exists. Pass in a subpath to check if it exists.
-    */
-    exists(subpath?: string): Promise<boolean>
-
-    /**
-    Delete the fixture directory. Pass in a subpath to delete it.
-    */
-    rm(subpath?: string): Promise<void>
-
-    /**
-    Copy a path into the fixture directory.
-    */
-    cp(sourcePath: string, destinationSubpath?: string): Promise<void>
-
-    /**
-    Create a new folder in the fixture directory.
-    */
-    mkdir(folderPath: string): Promise<void>
-
-    /**
-    Read a file from the fixture directory.
-    */
-    readFile(filePath: string, encoding?: BufferEncoding): Promise<string | Buffer>
-
-    /**
-    Read the contents of a directory in the fixture.
-    */
-    readdir(directoryPath: string, options?): Promise<string[] | Dirent[]>
-
-    /**
-    Create a file in the fixture directory.
-    */
-    writeFile(filePath: string, content: string | Buffer): Promise<void>
-
-    /**
-    Read and parse a JSON file from the fixture directory.
-    Supports generic type parameter for type-safe results.
-    */
-    readJson<T = unknown>(filePath: string): Promise<T>
-
-    /**
-    Create a JSON file in the fixture directory.
-    Optionally specify indentation (spaces or tabs).
-    */
-    writeJson(filePath: string, json: unknown, space?: string | number): Promise<void>
-}
-```
+</details>
 
 ## Related
 
