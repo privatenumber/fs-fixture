@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
 
+// Polyfill for Node v18
 if (typeof Symbol.asyncDispose !== 'symbol') {
 	Object.defineProperty(Symbol, 'asyncDispose', {
 		configurable: false,
@@ -84,12 +85,15 @@ export class FsFixture {
 	/**
 	Create a file in the fixture directory.
 	*/
-	writeFile(filePath: string, content: string) {
-		return fs.writeFile(
-			this.getPath(filePath),
-			content,
-		);
-	}
+	writeFile: typeof fs.writeFile = ((
+		filePath: string,
+		data: string | Buffer,
+		...args
+	) => fs.writeFile(
+		this.getPath(filePath),
+		data,
+		...args as [any?], // eslint-disable-line @typescript-eslint/no-explicit-any
+	)) as typeof fs.writeFile;
 
 	/**
 	Create a JSON file in the fixture directory.
@@ -104,25 +108,13 @@ export class FsFixture {
 	/**
 	Read a file from the fixture directory.
 	*/
-	readFile(
+	readFile: typeof fs.readFile = ((
 		filePath: string,
-		encoding?: null,
-	): Promise<Buffer>;
-
-	readFile(
-		filePath: string,
-		encoding: BufferEncoding,
-	): Promise<string>;
-
-	readFile(
-		filePath: string,
-		encoding?: BufferEncoding | null,
-	) {
-		return fs.readFile(
-			this.getPath(filePath),
-			encoding,
-		);
-	}
+		options?,
+	) => fs.readFile(
+		this.getPath(filePath),
+		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	)) as typeof fs.readFile;
 
 	/**
 	 * Resource management cleanup

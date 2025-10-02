@@ -11,7 +11,7 @@ export type ApiBase = {
 	symlink(
 		targetPath: string,
 
-	/**
+		/**
          * Symlink type for Windows. Defaults to auto-detect by Node.
          */
 		type?: SymlinkType,

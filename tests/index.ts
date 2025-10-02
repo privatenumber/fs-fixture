@@ -62,6 +62,16 @@ describe('fs-fixture', ({ test }) => {
 
 		expect<FsFixture>(fixture);
 
+		// Type assertions for readFile
+		const stringResult = await fixture.readFile('directory/a', 'utf8');
+		expect<string>(stringResult);
+
+		const bufferResult = await fixture.readFile('directory/a');
+		expect<Buffer>(bufferResult);
+
+		const nullEncodingResult = await fixture.readFile('directory/a', null);
+		expect<Buffer>(nullEncodingResult);
+
 		const filePathA = fixture.getPath('directory/a');
 		const filePathB = fixture.getPath('directory/b');
 
@@ -95,6 +105,12 @@ describe('fs-fixture', ({ test }) => {
 
 		await fixture.cp(filePathA, 'directory2/');
 		expect(await fixture.readFile('directory2/a', 'utf8')).toBe('a');
+
+		// Type assertions for writeFile
+		await fixture.writeFile('test-string.txt', 'string content');
+		await fixture.writeFile('test-buffer.bin', Buffer.from('buffer content'));
+		await fixture.writeFile('test-encoding.txt', 'content', 'utf8');
+		await fixture.writeFile('test-options.txt', 'content', { encoding: 'utf8' });
 
 		// rm file
 		await fixture.rm('directory/a');
