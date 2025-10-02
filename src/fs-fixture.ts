@@ -127,6 +127,23 @@ export class FsFixture {
 	)) as typeof fs.readFile;
 
 	/**
+	 * Read the contents of a directory in the fixture.
+	 *
+	 * @param directoryPath - The directory path within the fixture to read.
+	 *   Defaults to the fixture root when empty string is passed.
+	 * @param options - Optional read directory options.
+	 *   Use `{ withFileTypes: true }` to get Dirent objects.
+	 * @returns Promise resolving to array of file/directory names or Dirent objects
+	 */
+	readdir: typeof fs.readdir = ((
+		directoryPath: string,
+		options?,
+	) => fs.readdir(
+		this.getPath(directoryPath || ''),
+		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	)) as typeof fs.readdir;
+
+	/**
 	 * Create or overwrite a file in the fixture directory.
 	 *
 	 * @param filePath - The file path within the fixture to write

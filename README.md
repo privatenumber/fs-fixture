@@ -185,6 +185,11 @@ class FsFixture {
     readFile(filePath: string, encoding?: BufferEncoding): Promise<string | Buffer>
 
     /**
+    Read the contents of a directory in the fixture.
+    */
+    readdir(directoryPath: string, options?): Promise<string[] | Dirent[]>
+
+    /**
     Create a file in the fixture directory.
     */
     writeFile(filePath: string, content: string | Buffer): Promise<void>

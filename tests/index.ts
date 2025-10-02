@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect } from 'manten';
@@ -111,6 +112,30 @@ describe('fs-fixture', ({ test }) => {
 		await fixture.writeFile('test-buffer.bin', Buffer.from('buffer content'));
 		await fixture.writeFile('test-encoding.txt', 'content', 'utf8');
 		await fixture.writeFile('test-options.txt', 'content', { encoding: 'utf8' });
+
+		// Test readdir
+		const directoryContents = await fixture.readdir('directory');
+		expect(directoryContents).toContain('a');
+		expect(directoryContents).toContain('b');
+		expect(directoryContents).toContain('c');
+		expect(directoryContents).toContain('d');
+
+		const rootContents = await fixture.readdir('');
+		expect(rootContents).toContain('directory');
+		expect(rootContents).toContain('emptyDirectory');
+
+		// Test readdir with withFileTypes
+		const directoryEntriesResult = await fixture.readdir('directory', { withFileTypes: true });
+		expect(directoryEntriesResult.length).toBeGreaterThan(0);
+		const fileEntry = directoryEntriesResult.find(entry => entry.name === 'a');
+		expect(fileEntry?.isFile()).toBe(true);
+
+		// Type assertions for readdir
+		const stringArray: string[] = await fixture.readdir('');
+		expect(Array.isArray(stringArray)).toBe(true);
+
+		const direntArray: Dirent[] = await fixture.readdir('.', { withFileTypes: true });
+		expect(Array.isArray(direntArray)).toBe(true);
 
 		// rm file
 		await fixture.rm('directory/a');
