@@ -3,11 +3,7 @@ import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FsFixture } from './fs-fixture.js';
-import {
-	osTemporaryDirectory,
-	directoryNamespace,
-	getId,
-} from './utils/temporary-directory.js';
+import { osTemporaryDirectory } from './utils/temporary-directory.js';
 import {
 	type FileTree, type ApiBase, flattenFileTree, Directory, File, Symlink,
 } from './utils/flatten-file-tree.js';
@@ -77,11 +73,14 @@ export const createFixture = async (
 		)
 		: osTemporaryDirectory;
 
-	const fixturePath = path.join(resolvedTemporaryDirectory, `${directoryNamespace}-${getId()}/`);
+	// Ensure parent directory exists when using custom tempDir
+	if (options?.tempDir) {
+		await fs.mkdir(resolvedTemporaryDirectory, { recursive: true });
+	}
 
-	await fs.mkdir(fixturePath, {
-		recursive: true,
-	});
+	const fixturePath = await fs.mkdtemp(
+		path.join(resolvedTemporaryDirectory, 'fs-fixture-'),
+	);
 
 	if (source) {
 		// create from directory path
@@ -101,15 +100,21 @@ export const createFixture = async (
 				getPath: (...subpaths) => path.join(fixturePath, ...subpaths),
 				symlink: (targetPath, type) => new Symlink(targetPath, type),
 			};
+			const flatTree = flattenFileTree(source, fixturePath, api);
+
+			// 1. Create all directories first
 			await Promise.all(
-				flattenFileTree(source, fixturePath, api).map(async (file) => {
-					if (file instanceof Directory) {
-						await fs.mkdir(file.path, { recursive: true });
-					} else if (file instanceof Symlink) {
-						await fs.mkdir(path.dirname(file.path!), { recursive: true });
+				flatTree
+					.filter((file): file is Directory => file instanceof Directory)
+					.map(file => fs.mkdir(file.path, { recursive: true })),
+			);
+
+			// 2. Create all files and symlinks in parallel
+			await Promise.all(
+				flatTree.map(async (file) => {
+					if (file instanceof Symlink) {
 						await fs.symlink(file.target, file.path!, file.type);
 					} else if (file instanceof File) {
-						await fs.mkdir(path.dirname(file.path!), { recursive: true });
 						await fs.writeFile(file.path, file.content);
 					}
 				}),

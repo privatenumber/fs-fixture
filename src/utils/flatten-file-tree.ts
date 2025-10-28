@@ -58,11 +58,16 @@ export const flattenFileTree = (
 
 		if (typeof fileContent === 'string' || Buffer.isBuffer(fileContent)) {
 			files.push(new File(filePath, fileContent));
-		} else {
+		} else if (fileContent && typeof fileContent === 'object' && !Array.isArray(fileContent)) {
 			// Directory
 			files.push(
 				new Directory(filePath),
 				...flattenFileTree(fileContent, filePath, apiBase),
+			);
+		} else {
+			// Handle invalid content from a function (null, undefined, number, etc.)
+			throw new TypeError(
+				`Invalid file content for path "${filePath}". Functions must return a string, Buffer, Symlink, or a nested FileTree object. Received: ${String(fileContent)}`,
 			);
 		}
 	}
