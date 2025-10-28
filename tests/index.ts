@@ -278,6 +278,18 @@ describe('fs-fixture', ({ test }) => {
 		expect(await fixture.readFile('a/b/c/other.txt', 'utf8')).toBe('sibling');
 	});
 
+	test('creates parent directories for flat file paths', async () => {
+		await using fixture = await createFixture({
+			'src/tracked.js': 'const x = "unquoted"',
+			'src/untracked.js': 'const y = "also-unquoted"',
+			'nested/deep/file.txt': 'content',
+		});
+
+		expect(await fixture.readFile('src/tracked.js', 'utf8')).toBe('const x = "unquoted"');
+		expect(await fixture.readFile('src/untracked.js', 'utf8')).toBe('const y = "also-unquoted"');
+		expect(await fixture.readFile('nested/deep/file.txt', 'utf8')).toBe('content');
+	});
+
 	describe('FileTree validation', async ({ test }) => {
 		await test('throws for invalid function-based content (undefined)', async () => {
 			await expect(

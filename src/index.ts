@@ -103,10 +103,20 @@ export const createFixture = async (
 			const flatTree = flattenFileTree(source, fixturePath, api);
 
 			// 1. Create all directories first
+			// (explicit directories + parent directories of files/symlinks)
+			const directories = new Set<string>();
+
+			for (const file of flatTree) {
+				if (file instanceof Directory) {
+					directories.add(file.path);
+				} else if (file instanceof File || file instanceof Symlink) {
+					// Ensure parent directory exists
+					directories.add(path.dirname(file.path!));
+				}
+			}
+
 			await Promise.all(
-				flatTree
-					.filter((file): file is Directory => file instanceof Directory)
-					.map(file => fs.mkdir(file.path, { recursive: true })),
+				Array.from(directories).map(directory => fs.mkdir(directory, { recursive: true })),
 			);
 
 			// 2. Create all files and symlinks in parallel
