@@ -235,4 +235,89 @@ describe('fs-fixture', ({ test }) => {
 
 		await fs.access(fixture.path);
 	});
+
+	test('creates multiple fixtures in parallel without conflict', async () => {
+		const fixtureCount = 20;
+		const fixtures: FsFixture[] = [];
+
+		try {
+			const creationPromises = Array.from({ length: fixtureCount }, () => createFixture());
+			const createdFixtures = await Promise.all(creationPromises);
+			fixtures.push(...createdFixtures);
+
+			expect(fixtures.length).toBe(fixtureCount);
+
+			// Check that all paths are unique
+			const paths = new Set(fixtures.map(f => f.path));
+			expect(paths.size).toBe(fixtureCount);
+
+			// Check that all fixtures exist and have the prefix
+			for (const fixture of fixtures) {
+				expect(fixture.path).toContain('fs-fixture-');
+				await fs.access(fixture.path);
+			}
+		} finally {
+			// Cleanup all created fixtures
+			await Promise.all(fixtures.map(f => f.rm()));
+		}
+	});
+
+	test('handles deeply nested file paths without race conditions', async () => {
+		await using fixture = await createFixture({
+			'a/b/c/d.txt': 'deep file',
+			a: {
+				b: {
+					c: {
+						'other.txt': 'sibling',
+					},
+				},
+			},
+		});
+
+		expect(await fixture.readFile('a/b/c/d.txt', 'utf8')).toBe('deep file');
+		expect(await fixture.readFile('a/b/c/other.txt', 'utf8')).toBe('sibling');
+	});
+
+	describe('FileTree validation', async ({ test }) => {
+		await test('throws for invalid function-based content (undefined)', async () => {
+			try {
+				await createFixture({
+					// @ts-expect-error Testing invalid return type
+					'file.txt': () => undefined,
+				});
+				throw new Error('Expected TypeError to be thrown');
+			} catch (error) {
+				expect(error instanceof TypeError).toBe(true);
+				expect((error as Error).message).toContain('Invalid file content');
+				expect((error as Error).message).toContain('undefined');
+			}
+		});
+
+		await test('throws for invalid function-based content (null)', async () => {
+			try {
+				await createFixture({
+					// @ts-expect-error Testing invalid return type
+					'file.txt': () => null,
+				});
+				throw new Error('Expected TypeError to be thrown');
+			} catch (error) {
+				expect(error instanceof TypeError).toBe(true);
+				expect((error as Error).message).toContain('Invalid file content');
+				expect((error as Error).message).toContain('null');
+			}
+		});
+
+		await test('throws for invalid content (array)', async () => {
+			try {
+				await createFixture({
+					// @ts-expect-error Testing invalid content type
+					'a-directory': [],
+				});
+				throw new Error('Expected TypeError to be thrown');
+			} catch (error) {
+				expect(error instanceof TypeError).toBe(true);
+				expect((error as Error).message).toContain('Invalid file content');
+			}
+		});
+	});
 });
