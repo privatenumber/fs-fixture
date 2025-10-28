@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import type { Dirent } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect } from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
 
@@ -223,5 +224,15 @@ describe('fs-fixture', ({ test }) => {
 			recursive: true,
 			force: true,
 		});
+	});
+
+	test('custom temporary directory with URL', async () => {
+		const customUrl = new URL(`custom-dir-${Date.now()}`, pathToFileURL(os.tmpdir()));
+
+		await using fixture = await createFixture({}, {
+			tempDir: customUrl,
+		});
+
+		await fs.access(fixture.path);
 	});
 });

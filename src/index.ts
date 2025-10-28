@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { FsFixture } from './fs-fixture.js';
 import {
 	osTemporaryDirectory,
@@ -21,8 +22,12 @@ export type CreateFixtureOptions = {
 	/**
 	 * The temporary directory to create the fixtures in.
 	 * Defaults to `os.tmpdir()`.
+	 *
+	 * Accepts either a string path or a URL object.
+	 *
+	 * Tip: use `new URL('.', import.meta.url)` to the get the file's directory (not the file).
 	 */
-	tempDir?: string;
+	tempDir?: string | URL;
 
 	/**
 	 * Function to filter files to copy when using a template path.
@@ -65,7 +70,11 @@ export const createFixture = async (
 	options?: CreateFixtureOptions,
 ) => {
 	const resolvedTemporaryDirectory = options?.tempDir
-		? path.resolve(options.tempDir)
+		? path.resolve(
+			typeof options.tempDir === 'string'
+				? options.tempDir
+				: fileURLToPath(options.tempDir),
+		)
 		: osTemporaryDirectory;
 
 	const fixturePath = path.join(resolvedTemporaryDirectory, `${directoryNamespace}-${getId()}/`);
