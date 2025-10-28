@@ -291,7 +291,7 @@ describe('fs-fixture', ({ test }) => {
 	});
 
 	describe('FileTree validation', async ({ test }) => {
-		await test('throws for invalid function-based content (undefined)', async () => {
+		test('throws for invalid function-based content (undefined)', async () => {
 			await expect(
 				createFixture({
 					// @ts-expect-error Testing invalid return type
@@ -300,7 +300,7 @@ describe('fs-fixture', ({ test }) => {
 			).rejects.toThrow(TypeError);
 		});
 
-		await test('throws for invalid function-based content (null)', async () => {
+		test('throws for invalid function-based content (null)', async () => {
 			await expect(
 				createFixture({
 					// @ts-expect-error Testing invalid return type
@@ -309,13 +309,36 @@ describe('fs-fixture', ({ test }) => {
 			).rejects.toThrow(TypeError);
 		});
 
-		await test('throws for invalid content (array)', async () => {
+		test('throws for invalid content (array)', async () => {
 			await expect(
 				createFixture({
 					// @ts-expect-error Testing invalid content type
 					'a-directory': [],
 				}),
 			).rejects.toThrow(TypeError);
+		});
+
+		test('handles Buffer.from() with byte array', async () => {
+			await using fixture = await createFixture({
+				'text.txt': 'This is text',
+				'binary.dat': Buffer.from([0x00, 0x01, 0x02, 0xFF]),
+			});
+
+			const textContent = await fixture.readFile('text.txt', 'utf8');
+			expect(textContent).toBe('This is text');
+
+			// Verify binary.dat is created as a file, not a directory
+			const stat = await fs.stat(fixture.getPath('binary.dat'));
+			expect(stat.isFile()).toBe(true);
+			expect(stat.isDirectory()).toBe(false);
+
+			// Verify the binary content is correct
+			const binaryContent = await fixture.readFile('binary.dat');
+			expect(binaryContent).toEqual(Buffer.from([0x00, 0x01, 0x02, 0xFF]));
+
+			// Verify it contains null bytes when read as UTF-8
+			const binaryAsUtf8 = await fixture.readFile('binary.dat', 'utf8');
+			expect(binaryAsUtf8.includes('\u0000')).toBe(true);
 		});
 	});
 });
