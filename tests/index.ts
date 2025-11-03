@@ -227,7 +227,10 @@ describe('fs-fixture', ({ test }) => {
 	});
 
 	test('custom temporary directory with URL', async () => {
-		const customUrl = new URL(`custom-dir-${Date.now()}`, pathToFileURL(os.tmpdir()));
+		const customUrl = new URL(
+			`custom-dir-${Date.now()}`,
+			pathToFileURL(os.tmpdir() + path.sep),
+		);
 
 		await using fixture = await createFixture({}, {
 			tempDir: customUrl,
