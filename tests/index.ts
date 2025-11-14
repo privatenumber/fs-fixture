@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { describe, expect } from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
 
-describe('fs-fixture', ({ test }) => {
+describe('fs-fixture', ({ test, describe }) => {
 	test('creates from no arg', async () => {
 		const fixture = await createFixture();
 
@@ -291,6 +291,63 @@ describe('fs-fixture', ({ test }) => {
 		expect(await fixture.readFile('src/tracked.js', 'utf8')).toBe('const x = "unquoted"');
 		expect(await fixture.readFile('src/untracked.js', 'utf8')).toBe('const y = "also-unquoted"');
 		expect(await fixture.readFile('nested/deep/file.txt', 'utf8')).toBe('content');
+	});
+
+	describe('mv', ({ test }) => {
+		test('renames a file', async () => {
+			await using fixture = await createFixture({
+				'old-name.txt': 'file content',
+			});
+
+			expect(await fixture.exists('old-name.txt')).toBe(true);
+			await fixture.mv('old-name.txt', 'new-name.txt');
+
+			expect(await fixture.exists('old-name.txt')).toBe(false);
+			expect(await fixture.exists('new-name.txt')).toBe(true);
+			expect(await fixture.readFile('new-name.txt', 'utf8')).toBe('file content');
+		});
+
+		test('moves a file into a subdirectory', async () => {
+			await using fixture = await createFixture({
+				'file.txt': 'content',
+				src: {},
+			});
+
+			expect(await fixture.exists('file.txt')).toBe(true);
+			await fixture.mv('file.txt', 'src/file.txt');
+
+			expect(await fixture.exists('file.txt')).toBe(false);
+			expect(await fixture.exists('src/file.txt')).toBe(true);
+			expect(await fixture.readFile('src/file.txt', 'utf8')).toBe('content');
+		});
+
+		test('renames a directory', async () => {
+			await using fixture = await createFixture({
+				src: {
+					'file.txt': 'content',
+				},
+			});
+
+			expect(await fixture.exists('src')).toBe(true);
+			await fixture.mv('src', 'lib');
+
+			expect(await fixture.exists('src')).toBe(false);
+			expect(await fixture.exists('lib')).toBe(true);
+			expect(await fixture.readFile('lib/file.txt', 'utf8')).toBe('content');
+		});
+
+		test('overwrites existing file', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'source content',
+				'target.txt': 'target content',
+			});
+
+			await fixture.mv('source.txt', 'target.txt');
+
+			expect(await fixture.exists('source.txt')).toBe(false);
+			expect(await fixture.exists('target.txt')).toBe(true);
+			expect(await fixture.readFile('target.txt', 'utf8')).toBe('source content');
+		});
 	});
 
 	describe('FileTree validation', async ({ test }) => {

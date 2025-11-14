@@ -128,6 +128,10 @@ const files = await fixture.readdir('src')
 // Copy files into fixture
 await fixture.cp('/path/to/file.txt', 'copied-file.txt')
 
+// Move or rename files
+await fixture.mv('old-name.txt', 'new-name.txt')
+await fixture.mv('file.txt', 'src/file.txt')
+
 // Check if path exists
 if (await fixture.exists('optional-file.txt')) {
     // ...
@@ -203,6 +207,7 @@ const fixture = await createFixture({}, { tempDir: './custom-temp' })
 | `readdir(path, options?)` | List directory contents |
 | `mkdir(path)` | Create directory (recursive) |
 | `cp(source, dest?)` | Copy file/directory into fixture |
+| `mv(source, dest)` | Move or rename file/directory |
 
 ### Types
 

@@ -111,6 +111,33 @@ export class FsFixture {
 	}
 
 	/**
+	 * Move or rename a file or directory within the fixture.
+	 * This is a wrapper around `node:fs/promises.rename`.
+	 *
+	 * @param sourcePath - The source path relative to the fixture root
+	 * @param destinationPath - The destination path relative to the fixture root
+	 * @returns Promise that resolves when the move is complete
+	 *
+	 * @example
+	 * ```ts
+	 * // Rename a file
+	 * await fixture.mv('old-name.txt', 'new-name.txt')
+	 *
+	 * // Move a file into a directory
+	 * await fixture.mv('file.txt', 'src/file.txt')
+	 *
+	 * // Rename a directory
+	 * await fixture.mv('src', 'lib')
+	 * ```
+	 */
+	mv(sourcePath: string, destinationPath: string) {
+		return fs.rename(
+			this.getPath(sourcePath),
+			this.getPath(destinationPath),
+		);
+	}
+
+	/**
 	 * Read a file from the fixture directory.
 	 *
 	 * @param filePath - The file path within the fixture to read
