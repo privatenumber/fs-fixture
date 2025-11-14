@@ -18,6 +18,8 @@ export class FsFixture {
 	 */
 	readonly path: string;
 
+	private cleanUp = true;
+
 	/**
 	 * Create a Fixture instance from a path. Does not create the fixture directory.
 	 *
@@ -235,12 +237,45 @@ export class FsFixture {
 		);
 	}
 
+	debug(callback?: () => unknown | Promise<unknown>) {
+		const debugMode = (error?: unknown) => {
+			console.log(`Fixture path: ${this.path}`);
+			this.cleanUp = false;
+			if (error) {
+				throw error;
+			}
+		};
+
+		if (!callback) {
+			return debugMode();
+		}
+
+		let result: unknown | Promise<unknown>;
+		try {
+			result = callback();
+		} catch (error) {
+			debugMode(error);
+			return;
+		}
+
+		if (
+			result !== null
+			&& typeof result === 'object'
+			&& 'catch' in result
+			&& typeof result.catch === 'function'
+		) {
+			return result.catch(debugMode);
+		}
+	}
+
 	/**
 	 * Resource management cleanup
 	 * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-2.html
 	 */
 	async [Symbol.asyncDispose]() {
-		await this.rm();
+		if (this.cleanUp) {
+			await this.rm();
+		}
 	}
 }
 
