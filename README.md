@@ -149,6 +149,19 @@ const fixture = await createFixture({
 })
 ```
 
+**Symlinks:**
+```ts
+const fixture = await createFixture({
+    'index.js': 'import pkg from \'pkg\'',
+
+    // Symlink individual file or directory
+    'node_modules/pkg': ({ symlink }) => symlink(process.cwd()),
+
+    // Symlink entire directory (useful for sharing node_modules)
+    node_modules: ({ symlink }) => symlink(path.resolve('node_modules'))
+})
+```
+
 **Binary files:**
 ```ts
 const fixture = await createFixture({
