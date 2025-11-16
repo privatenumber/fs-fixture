@@ -209,6 +209,22 @@ describe('fs-fixture', ({ test, describe }) => {
 		expect(await fixture.exists()).toBe(false);
 	});
 
+	test('explicit resource management - debug', async () => {
+		let fixturePath: string;
+
+		{
+			await using fixture = await createFixture({});
+			fixturePath = fixture.path;
+			expect(await exists(fixturePath)).toBe(true);
+			try {
+				throw new Error('Debugging fixture');
+			} catch {
+				fixture.debug();
+			}
+		}
+		expect(await exists(fixturePath)).toBe(true);
+	});
+
 	test('custom temporary directory', async () => {
 		const customTemporaryDirectory = path.join(os.tmpdir(), `custom-dir-${Date.now()}`);
 
