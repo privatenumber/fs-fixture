@@ -3,10 +3,10 @@ import type { Dirent } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, expect } from 'manten';
+import { describe, test, expect } from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
 
-describe('fs-fixture', ({ test, describe }) => {
+describe('fs-fixture', () => {
 	test('creates from no arg', async () => {
 		const fixture = await createFixture();
 
@@ -293,7 +293,7 @@ describe('fs-fixture', ({ test, describe }) => {
 		expect(await fixture.readFile('nested/deep/file.txt', 'utf8')).toBe('content');
 	});
 
-	describe('mv', ({ test }) => {
+	describe('mv', () => {
 		test('renames a file', async () => {
 			await using fixture = await createFixture({
 				'old-name.txt': 'file content',
@@ -350,7 +350,7 @@ describe('fs-fixture', ({ test, describe }) => {
 		});
 	});
 
-	describe('FileTree validation', async ({ test }) => {
+	describe('FileTree validation', async () => {
 		test('throws for invalid function-based content (undefined)', async () => {
 			await expect(
 				createFixture({
