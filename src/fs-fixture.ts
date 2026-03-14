@@ -87,7 +87,7 @@ export class FsFixture {
 	) {
 		if (!destinationSubpath) {
 			destinationSubpath = path.basename(sourcePath);
-		} else if (destinationSubpath.endsWith(path.sep)) {
+		} else if (destinationSubpath.endsWith('/') || destinationSubpath.endsWith(path.sep)) {
 			destinationSubpath += path.basename(sourcePath);
 		}
 

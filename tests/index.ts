@@ -77,16 +77,6 @@ describe('fs-fixture', () => {
 		expect(await fixture.readFile('buffer-from-function')).toEqual(Buffer.from('dynamic binary'));
 		expect(await fixture.readFile('buffer-from-function', 'utf8')).toBe('dynamic binary');
 
-		// Test cp method
-		await fixture.cp(fixture.getPath('directory/a'), 'directory/a-copy');
-		expect(await fixture.readFile('directory/a-copy', 'utf8')).toBe('a');
-
-		await fixture.cp(fixture.getPath('directory/a'));
-		expect(await fixture.readFile('a', 'utf8')).toBe('a');
-
-		await fixture.cp(fixture.getPath('directory/a'), 'directory2/');
-		expect(await fixture.readFile('directory2/a', 'utf8')).toBe('a');
-
 		// Type assertions for writeFile
 		await fixture.writeFile('test-string.txt', 'string content');
 		await fixture.writeFile('test-buffer.bin', Buffer.from('buffer content'));
@@ -291,6 +281,81 @@ describe('fs-fixture', () => {
 		expect(await fixture.readFile('src/tracked.js', 'utf8')).toBe('const x = "unquoted"');
 		expect(await fixture.readFile('src/untracked.js', 'utf8')).toBe('const y = "also-unquoted"');
 		expect(await fixture.readFile('nested/deep/file.txt', 'utf8')).toBe('content');
+	});
+
+	describe('cp', () => {
+		test('copies file with explicit destination', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'content',
+			});
+
+			await fixture.cp(fixture.getPath('source.txt'), 'copy.txt');
+			expect(await fixture.readFile('copy.txt', 'utf8')).toBe('content');
+		});
+
+		test('copies file using basename when destination omitted', async () => {
+			await using fixture = await createFixture({
+				'dir/source.txt': 'content',
+			});
+
+			await fixture.cp(fixture.getPath('dir/source.txt'));
+			expect(await fixture.readFile('source.txt', 'utf8')).toBe('content');
+		});
+
+		test('copies into directory with forward slash separator', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'content',
+			});
+
+			await fixture.mkdir('dest');
+			await fixture.cp(fixture.getPath('source.txt'), 'dest/');
+			expect(await fixture.readFile('dest/source.txt', 'utf8')).toBe('content');
+		});
+
+		test('copies into directory with path.sep separator', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'content',
+			});
+
+			await fixture.mkdir('dest');
+			await fixture.cp(fixture.getPath('source.txt'), `dest${path.sep}`);
+			expect(await fixture.readFile('dest/source.txt', 'utf8')).toBe('content');
+		});
+	});
+
+	describe('symlinks', () => {
+		test('creates file symlink with auto-detect type', async () => {
+			await using fixture = await createFixture({
+				'target.txt': 'content',
+				'link.txt': ({ symlink }) => symlink('./target.txt'),
+			});
+
+			expect(await fixture.readFile('link.txt', 'utf8')).toBe('content');
+		});
+
+		test('creates directory symlink with explicit dir type', async () => {
+			await using fixture = await createFixture({
+				src: {
+					'index.js': 'code',
+				},
+				lib: ({ symlink }) => symlink('./src', 'dir'),
+			});
+
+			expect(await fixture.exists('lib/index.js')).toBe(true);
+			expect(await fixture.readFile('lib/index.js', 'utf8')).toBe('code');
+		});
+
+		test('creates junction symlink', async () => {
+			await using fixture = await createFixture({
+				src: {
+					'index.js': 'code',
+				},
+				lib: ({ symlink }) => symlink('./src', 'junction'),
+			});
+
+			expect(await fixture.exists('lib/index.js')).toBe(true);
+			expect(await fixture.readFile('lib/index.js', 'utf8')).toBe('code');
+		});
 	});
 
 	describe('mv', () => {
