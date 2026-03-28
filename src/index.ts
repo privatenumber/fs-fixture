@@ -3,12 +3,14 @@ import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FsFixture } from './fs-fixture.js';
+import type { FsPromises } from './utils/fs-types.js';
 import { osTemporaryDirectory } from './utils/temporary-directory.js';
 import {
 	type FileTree, type ApiBase, flattenFileTree, Directory, File, Symlink,
 } from './utils/flatten-file-tree.js';
 
 export { type FileTree };
+export { type FsPromises } from './utils/fs-types.js';
 export { type FsFixtureType as FsFixture } from './fs-fixture.js';
 
 type FilterFunction = CopyOptions['filter'];
@@ -30,7 +32,26 @@ export type CreateFixtureOptions = {
 	 * Return `true` to copy the item, `false` to ignore it.
 	 */
 	templateFilter?: FilterFunction;
+
+	/**
+	 * Custom fs/promises-compatible API for fixture operations.
+	 * Use this to create fixtures in a virtual filesystem instead of on disk.
+	 *
+	 * Required: readFile, writeFile, readdir (with withFileTypes),
+	 * mkdir, rename, access.
+	 * Optional: rm (or unlink + rmdir as fallback), symlink, cp, mkdtemp.
+	 *
+	 * @example
+	 * ```ts
+	 * import { create, MemoryProvider } from '@platformatic/vfs'
+	 * const vfs = create(new MemoryProvider())
+	 * const fixture = await createFixture({ 'file.txt': 'hi' }, { fs: vfs.promises })
+	 * ```
+	 */
+	fs?: FsPromises;
 };
+
+let fixtureCounter = 0;
 
 /**
  * Create a temporary test fixture directory.
@@ -65,6 +86,8 @@ export const createFixture = async (
 	source?: string | FileTree,
 	options?: CreateFixtureOptions,
 ) => {
+	const fsApi = options?.fs ?? fs;
+
 	const resolvedTemporaryDirectory = options?.tempDir
 		? path.resolve(
 			typeof options.tempDir === 'string'
@@ -75,17 +98,34 @@ export const createFixture = async (
 
 	// Ensure parent directory exists when using custom tempDir
 	if (options?.tempDir) {
-		await fs.mkdir(resolvedTemporaryDirectory, { recursive: true });
+		await fsApi.mkdir(resolvedTemporaryDirectory, { recursive: true });
 	}
 
-	const fixturePath = await fs.mkdtemp(
-		path.join(resolvedTemporaryDirectory, 'fs-fixture-'),
-	);
+	// Generate unique fixture path
+	let fixturePath: string;
+	if (fsApi.mkdtemp) {
+		fixturePath = await fsApi.mkdtemp(
+			path.join(resolvedTemporaryDirectory, 'fs-fixture-'),
+		);
+	} else {
+		// Fallback for fs implementations without mkdtemp
+		fixtureCounter += 1;
+		fixturePath = path.join(
+			resolvedTemporaryDirectory,
+			`fs-fixture-${process.pid}-${fixtureCounter}`,
+		);
+		await fsApi.mkdir(fixturePath, { recursive: true });
+	}
 
 	if (source) {
 		// create from directory path
 		if (typeof source === 'string') {
-			await fs.cp(
+			if (!fsApi.cp) {
+				throw new TypeError(
+					'Template directory sources require the fs API to support cp()',
+				);
+			}
+			await fsApi.cp(
 				source,
 				fixturePath,
 				{
@@ -116,21 +156,30 @@ export const createFixture = async (
 			}
 
 			await Promise.all(
-				Array.from(directories).map(directory => fs.mkdir(directory, { recursive: true })),
+				Array.from(directories).map(
+					directory => fsApi.mkdir(directory, { recursive: true }),
+				),
 			);
 
 			// 2. Create all files and symlinks in parallel
+			const hasSymlinks = flatTree.some(file => file instanceof Symlink);
+			if (hasSymlinks && !fsApi.symlink) {
+				throw new TypeError(
+					'Symlinks require the fs API to support symlink()',
+				);
+			}
+
 			await Promise.all(
 				flatTree.map(async (file) => {
 					if (file instanceof Symlink) {
-						await fs.symlink(file.target, file.path!, file.type);
+						await fsApi.symlink!(file.target, file.path!, file.type);
 					} else if (file instanceof File) {
-						await fs.writeFile(file.path, file.content);
+						await fsApi.writeFile(file.path, file.content);
 					}
 				}),
 			);
 		}
 	}
 
-	return new FsFixture(fixturePath);
+	return new FsFixture(fixturePath, options?.fs);
 };

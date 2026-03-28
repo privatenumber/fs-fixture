@@ -17,6 +17,7 @@ Simple API to create disposable test fixtures on disk. Tiny (`1.1 kB` gzipped) w
 - 💾 Binary file support with Buffers
 - 🎯 TypeScript-first with full type safety
 - 🔄 File methods inherit types directly from Node.js `fs` module
+- 🔌 Pluggable filesystem — use with @platformatic/vfs, memfs, or any `fs/promises`-compatible API
 
 ## Installation
 
@@ -185,6 +186,31 @@ const fixture = await createFixture({
 })
 ```
 
+### Custom filesystem
+
+Pass any `fs/promises`-compatible API via the `fs` option to use a virtual filesystem instead of disk:
+
+```ts
+import { create, MemoryProvider } from '@platformatic/vfs'
+import { createFixture } from 'fs-fixture'
+
+const fs = create(new MemoryProvider()).promises
+const fixture = await createFixture({
+    'package.json': JSON.stringify({ name: 'test' }),
+    'src/index.js': 'export default 42'
+}, { fs })
+
+await fixture.readFile('src/index.js', 'utf8') // 'export default 42'
+```
+
+Works with any library that implements the `fs/promises` API shape, including [@platformatic/vfs](https://github.com/platformatic/vfs), the future [`node:vfs`](https://github.com/nodejs/node/pull/61478), and [memfs](https://github.com/streamich/memfs).
+
+> [!NOTE]
+> With a custom fs, files only exist in that fs instance. Use `fixture.readFile()` or `fixture.fs` to access them — `fixture.path` is a virtual path that doesn't exist on the real disk.
+
+> [!NOTE]
+> Template directory sources (string paths) are not supported with custom filesystems because most virtual fs implementations lack recursive `cp`. Use a `FileTree` object instead.
+
 ## API
 
 ### `createFixture(source?, options?)`
@@ -195,6 +221,7 @@ Creates a temporary fixture directory and returns a `FsFixture` instance.
 - `source` (optional): String path to template directory, or `FileTree` object defining the structure
 - `options.tempDir` (optional): Custom temp directory. Defaults to `os.tmpdir()`
 - `options.templateFilter` (optional): Filter function when copying from template directory
+- `options.fs` (optional): Custom `fs/promises`-compatible API for virtual filesystem support
 
 **Returns:** `Promise<FsFixture>`
 
@@ -210,6 +237,7 @@ const fixture = await createFixture({}, { tempDir: './custom-temp' })
 | Method | Description |
 |--------|-------------|
 | `fixture.path` | Absolute path to the fixture directory |
+| `fixture.fs` | The underlying `fs/promises` API used by the fixture |
 | `getPath(...paths)` | Get absolute path to file/directory in fixture |
 | `exists(path?)` | Check if file/directory exists |
 | `rm(path?)` | Delete file/directory (or entire fixture if no path) |
@@ -239,6 +267,34 @@ type Api = {
     symlink: (target: string) => Symlink // Create a symlink
 }
 ```
+</details>
+
+<details>
+<summary><strong>FsPromises</strong></summary>
+
+The subset of `fs/promises` methods that custom filesystem implementations must provide:
+
+```ts
+type FsPromises = {
+    // Required
+    readFile(path: string, options?): Promise<Buffer | string>
+    writeFile(path: string, data: string | Buffer, options?): Promise<void>
+    readdir(path: string, options?): Promise<string[] | Dirent[]>
+    mkdir(path: string, options?): Promise<string | undefined>
+    rename(oldPath: string, newPath: string): Promise<void>
+    access(path: string, mode?: number): Promise<void>
+
+    // Optional
+    rm?(path: string, options?): Promise<void>
+    unlink?(path: string): Promise<void>
+    rmdir?(path: string): Promise<void>
+    symlink?(target: string, path: string, type?: string): Promise<void>
+    cp?(source: string, destination: string, options?): Promise<void>
+    mkdtemp?(prefix: string): Promise<string>
+}
+```
+
+If `rm` is not available, fs-fixture falls back to recursive removal using `readdir({ withFileTypes })` + `unlink` + `rmdir`. If `mkdtemp` is not available, fixture paths are generated with a counter.
 </details>
 
 ## Related

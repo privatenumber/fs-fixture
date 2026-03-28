@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
+import type { FsPromises } from './utils/fs-types.js';
+import { recursiveRm } from './utils/rm-polyfill.js';
 
 // Polyfill for Node v18
 if (typeof Symbol.asyncDispose !== 'symbol') {
@@ -18,13 +20,20 @@ export class FsFixture {
 	 */
 	readonly path: string;
 
+	readonly fs: FsPromises;
+
 	/**
 	 * Create a Fixture instance from a path. Does not create the fixture directory.
 	 *
 	 * @param fixturePath - The path to the fixture directory
+	 * @param fsApi - Optional fs/promises-compatible API. Defaults to real node:fs/promises.
 	 */
-	constructor(fixturePath: string) {
+	constructor(
+		fixturePath: string,
+		fsApi?: FsPromises,
+	) {
 		this.path = fixturePath;
+		this.fs = fsApi ?? fs;
 	}
 
 	/**
@@ -50,7 +59,7 @@ export class FsFixture {
 	 * @returns Promise resolving to true if the path exists, false otherwise
 	 */
 	exists(subpath = '') {
-		return fs.access(this.getPath(subpath)).then(
+		return this.fs.access(this.getPath(subpath)).then(
 			() => true,
 			() => false,
 		);
@@ -64,10 +73,20 @@ export class FsFixture {
 	 * @returns Promise that resolves when deletion is complete
 	 */
 	rm(subpath = '') {
-		return fs.rm(this.getPath(subpath), {
-			recursive: true,
-			force: true,
-		});
+		const targetPath = this.getPath(subpath);
+		if (this.fs.rm) {
+			return this.fs.rm(targetPath, {
+				recursive: true,
+				force: true,
+			});
+		}
+		if (!this.fs.unlink || !this.fs.rmdir) {
+			throw new Error('rm() requires the fs API to support rm(), or unlink() + rmdir()');
+		}
+		return recursiveRm(
+			this.fs as FsPromises & Required<Pick<FsPromises, 'unlink' | 'rmdir'>>,
+			targetPath,
+		);
 	}
 
 	/**
@@ -85,13 +104,17 @@ export class FsFixture {
 		destinationSubpath?: string,
 		options?: CopyOptions,
 	) {
+		if (!this.fs.cp) {
+			throw new Error('cp() requires the fs API to support cp()');
+		}
+
 		if (!destinationSubpath) {
 			destinationSubpath = path.basename(sourcePath);
 		} else if (destinationSubpath.endsWith('/') || destinationSubpath.endsWith(path.sep)) {
 			destinationSubpath += path.basename(sourcePath);
 		}
 
-		return fs.cp(
+		return this.fs.cp(
 			sourcePath,
 			this.getPath(destinationSubpath),
 			options,
@@ -105,7 +128,7 @@ export class FsFixture {
 	 * @returns Promise that resolves when directory is created
 	 */
 	mkdir(folderPath: string) {
-		return fs.mkdir(this.getPath(folderPath), {
+		return this.fs.mkdir(this.getPath(folderPath), {
 			recursive: true,
 		});
 	}
@@ -131,7 +154,7 @@ export class FsFixture {
 	 * ```
 	 */
 	mv(sourcePath: string, destinationPath: string) {
-		return fs.rename(
+		return this.fs.rename(
 			this.getPath(sourcePath),
 			this.getPath(destinationPath),
 		);
@@ -148,7 +171,7 @@ export class FsFixture {
 	readFile: typeof fs.readFile = ((
 		filePath: string,
 		options?,
-	) => fs.readFile(
+	) => this.fs.readFile(
 		this.getPath(filePath),
 		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 	)) as typeof fs.readFile;
@@ -165,7 +188,7 @@ export class FsFixture {
 	readdir: typeof fs.readdir = ((
 		directoryPath: string,
 		options?,
-	) => fs.readdir(
+	) => this.fs.readdir(
 		this.getPath(directoryPath || ''),
 		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 	)) as typeof fs.readdir;
@@ -182,7 +205,7 @@ export class FsFixture {
 		filePath: string,
 		data: string | Buffer,
 		...args
-	) => fs.writeFile(
+	) => this.fs.writeFile(
 		this.getPath(filePath),
 		data,
 		...args as [any?], // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -45,6 +45,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test custom fs (requires Node 22+)
+        run: pnpm test:custom-fs
+
       - name: Test Node.js v18
         run: pnpm --use-node-version=18.20.4 tsx tests/index.ts
 

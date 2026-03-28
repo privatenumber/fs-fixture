@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@platformatic/vfs':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@types/node':
         specifier: ^24.11.2
         version: 24.11.2
@@ -566,6 +569,10 @@ packages:
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
+
+  '@platformatic/vfs@0.2.0':
+    resolution: {integrity: sha512-CIQixja8TO6qtU8pXQ5kkofJ1Onuaos92xYFwMIlSIk3U4YqyeERhBhI6u6dWxILFyVSqnd0Aa9tiqx+so8ebQ==}
+    engines: {node: '>= 22'}
 
   '@quansync/fs@1.0.0':
     resolution: {integrity: sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ==}
@@ -3206,6 +3213,8 @@ snapshots:
   '@ota-meshi/ast-token-store@0.3.0': {}
 
   '@pkgr/core@0.2.9': {}
+
+  '@platformatic/vfs@0.2.0': {}
 
   '@quansync/fs@1.0.0':
     dependencies:
