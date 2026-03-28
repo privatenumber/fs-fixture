@@ -1,3 +1,7 @@
 export class PathBase {
-	constructor(readonly path: string) {}
+	readonly path: string;
+
+	constructor(path: string) {
+		this.path = path;
+	}
 }

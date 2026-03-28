@@ -46,7 +46,7 @@ jobs:
         run: pnpm test
 
       - name: Test Node.js v18
-        run: pnpm --use-node-version=18.20.4 test
+        run: pnpm --use-node-version=18.20.4 tsx tests/index.ts
 
       - name: Lint
         if: runner.os == 'Linux'
