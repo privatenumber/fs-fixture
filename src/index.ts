@@ -117,6 +117,10 @@ export const createFixture = async (
 		await fsApi.mkdir(fixturePath, { recursive: true });
 	}
 
+	const filter = options?.templateFilter && new Proxy(options.templateFilter, {
+		apply: (...args) => (args.at(-1)[0] === source ? () => false : Reflect.apply(...args)),
+	});
+
 	if (source) {
 		// create from directory path
 		if (typeof source === 'string') {
@@ -130,7 +134,7 @@ export const createFixture = async (
 				fixturePath,
 				{
 					recursive: true,
-					filter: options?.templateFilter,
+					filter,
 				},
 			);
 		} else if (typeof source === 'object') {
