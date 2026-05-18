@@ -72,6 +72,24 @@ Path syntax — these are equivalent:
 { 'src/utils/helper.js': 'code' }
 ```
 
+> [!TIP]
+> Slash-separated keys can also group a shared prefix:
+>
+> ```ts
+> await createFixture({
+>     'file.js': 'import { a } from "my-pkg";',
+>
+>     'node_modules/my-pkg': {
+>         'package.json': JSON.stringify({
+>             name: 'my-pkg',
+>             type: 'module',
+>             exports: './index.js'
+>         }),
+>         'index.js': 'export const a = 1;'
+>     }
+> })
+> ```
+
 ## Patterns
 
 ### Symlinks

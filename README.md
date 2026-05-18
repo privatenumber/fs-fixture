@@ -186,6 +186,24 @@ const fixture = await createFixture({
 })
 ```
 
+> [!TIP]
+> Path syntax also works for grouped prefixes, so you can keep related files together without repeating the shared path:
+>
+> ```ts
+> await createFixture({
+>     'file.js': 'import { a } from "my-pkg";',
+>
+>     'node_modules/my-pkg': {
+>         'package.json': JSON.stringify({
+>             name: 'my-pkg',
+>             type: 'module',
+>             exports: './index.js'
+>         }),
+>         'index.js': 'export const a = 1;'
+>     }
+> })
+> ```
+
 ### Custom filesystem
 
 Pass any `fs/promises`-compatible API via the `fs` option to use a virtual filesystem instead of disk:
