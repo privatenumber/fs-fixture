@@ -88,7 +88,8 @@ const createFileTree = async (
 
 	await settleAll(
 		Array.from(directories).map(
-			directory => fixture.fs.mkdir(directory, { recursive: true }),
+			// async turns a synchronous throw into a rejection, so settleAll() still waits for siblings
+			async directory => fixture.fs.mkdir(directory, { recursive: true }),
 		),
 	);
 

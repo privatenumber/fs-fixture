@@ -70,7 +70,7 @@ export class FsFixture {
 	 *   Defaults to deleting the entire fixture.
 	 * @returns Promise that resolves when deletion is complete
 	 */
-	rm = (subpath = '') => {
+	rm = async (subpath = '') => {
 		const targetPath = this.getPath(subpath);
 		if (this.fs.rm) {
 			return this.fs.rm(targetPath, {
@@ -97,7 +97,7 @@ export class FsFixture {
 	 * @param options - Copy options (e.g., recursive, filter)
 	 * @returns Promise that resolves when copy is complete
 	 */
-	cp = (
+	cp = async (
 		sourcePath: string,
 		destinationSubpath?: string,
 		options?: CopyOptions,

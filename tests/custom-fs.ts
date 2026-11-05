@@ -55,7 +55,7 @@ describe('custom fs (BYOFS)', () => {
 		expect(await fs.readFile(fixture.getPath('initialized/file.txt'), 'utf8')).toBe(fixture.path);
 	});
 
-	test('preserves initializer error when cleanup throws synchronously', async () => {
+	test('preserves initializer error when cleanup fails', async () => {
 		const memoryFs = create(new MemoryProvider()).promises;
 		const {
 			unlink: _unlink,
@@ -118,6 +118,75 @@ describe('custom fs (BYOFS)', () => {
 		expect(await fixtureResult).toBe(writeError);
 		expect(cleanupStarted).toBe(true);
 		await expect(memoryFs.access(fixturePath)).rejects.toThrow();
+	});
+
+	test('waits for directories before cleanup when mkdir throws synchronously', async () => {
+		const memoryFs = create(new MemoryProvider()).promises;
+		const delayedMkdir = Promise.withResolvers<void>();
+		const pendingMkdirStarted = Promise.withResolvers<void>();
+		const mkdirError = new Error('mkdir failed');
+		let cleanupStarted = false;
+		let fixturePath = '';
+
+		const fs = {
+			...memoryFs,
+			mkdir: (...args: Parameters<typeof memoryFs.mkdir>) => {
+				const directory = String(args[0]);
+				if (directory.endsWith('fails')) {
+					throw mkdirError;
+				}
+
+				if (directory.endsWith('pending')) {
+					pendingMkdirStarted.resolve();
+					return delayedMkdir.promise.then(() => memoryFs.mkdir(...args));
+				}
+
+				return memoryFs.mkdir(...args);
+			},
+			rmdir: async (...args: Parameters<typeof memoryFs.rmdir>) => {
+				cleanupStarted = true;
+				return memoryFs.rmdir(...args);
+			},
+		};
+
+		const fixtureResult = createFixture((fixture) => {
+			fixturePath = fixture.path;
+
+			return {
+				pending: {},
+				fails: {},
+			};
+		}, { fs }).then(
+			() => new Error('Expected fixture creation to fail'),
+			error => error,
+		);
+
+		// Wait for directory creation to start, so a premature cleanup can happen first
+		await pendingMkdirStarted.promise;
+		await new Promise(setImmediate);
+		expect(cleanupStarted).toBe(false);
+
+		delayedMkdir.resolve();
+
+		expect(await fixtureResult).toBe(mkdirError);
+		await expect(memoryFs.access(fixturePath)).rejects.toThrow();
+	});
+
+	test('rm() and cp() reject when the fs does not support them', async () => {
+		const memoryFs = create(new MemoryProvider()).promises;
+		const {
+			unlink: _unlink,
+			rmdir: _rmdir,
+			...fs
+		} = memoryFs;
+		const fixture = await createFixture({}, { fs });
+
+		try {
+			await expect(fixture.rm()).rejects.toThrow('rm() requires');
+			await expect(fixture.cp('/file.txt')).rejects.toThrow('cp() requires');
+		} finally {
+			await memoryFs.rmdir(fixture.path);
+		}
 	});
 
 	test('aggregates FileTree write failures', async () => {
