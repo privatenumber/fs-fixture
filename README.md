@@ -333,7 +333,7 @@ import type { FsPromises } from 'fs-fixture'
 | Removal | `rm`, or `unlink` and `rmdir` | One removal strategy is required when calling `fixture.rm()`. Without one, a fixture whose setup fails stays in the fs. |
 | Symlinks | `symlink` | Required only when a FileTree contains a symlink |
 | Copying | `cp` | Required only when calling `fixture.cp()` |
-| Temporary directories | `mkdtemp` | Optional. fs-fixture generates fixture paths with a counter when omitted. |
+| Temporary directories | `mkdtemp` | Optional. When omitted, fs-fixture names each fixture `fs-fixture-<random UUID>`. |
 
 The exported type defines the exact overloads and option shapes. `fixture.readdir()` is a fixture convenience method. A custom fs `readdir` always receives the fixture's absolute path.
 </details>

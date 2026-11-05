@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
 import os from 'node:os';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FsFixture, type FsFixtureType } from './fs-fixture.js';
@@ -62,8 +63,6 @@ export type CreateFixtureOptions = {
 	 */
 	fs?: FsPromises;
 };
-
-let fixtureCounter = 0;
 
 const createFileTree = async (
 	fileTree: FileTree,
@@ -193,12 +192,10 @@ const createFixturePath = async (
 		return fsApi.mkdtemp(path.join(temporaryDirectory, 'fs-fixture-'));
 	}
 
-	fixtureCounter += 1;
-	const fixturePath = path.join(
-		temporaryDirectory,
-		`fs-fixture-${process.pid}-${fixtureCounter}`,
-	);
-	await fsApi.mkdir(fixturePath, { recursive: true });
+	// A random name does not depend on module state, so it stays collision-resistant across
+	// module instances, such as the ESM and CJS builds. Without recursive, a collision throws EEXIST
+	const fixturePath = path.join(temporaryDirectory, `fs-fixture-${randomUUID()}`);
+	await fsApi.mkdir(fixturePath);
 	return fixturePath;
 };
 

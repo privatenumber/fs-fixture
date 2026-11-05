@@ -12,7 +12,7 @@ The code is `createFixturePath()` in [`src/index.ts`](../../src/index.ts).
 | --- | --- | --- |
 | No `tempDir` | `fs.promises.realpath(os.tmpdir())`, computed for each fixture | `fs.mkdtemp(<base>/fs-fixture-)`, such as `fs-fixture-P8M77U` |
 | `tempDir` string or URL | `path.resolve()` of the value, with no symlink resolution | Same as above |
-| Custom `fs` without `mkdtemp` | Same as above | `fs-fixture-<pid>-<counter>`, created with `mkdir()` |
+| Custom `fs` without `mkdtemp` | Same as above | `fs-fixture-<random UUID>`, created with a non-recursive `mkdir()` |
 
 fs-fixture creates the base with `mkdir({ recursive: true })` when `tempDir` is given or a custom `fs` is used:
 
@@ -89,7 +89,9 @@ The name scheme had two problems:
 
 [`3036afe`](https://github.com/privatenumber/fs-fixture/commit/3036afe646a1361ea89c00a7a968ef9f3cbdbfa5) (v2.10.0) replaced both with `fs.mkdtemp()`. It creates the directory atomically with a random suffix, so uniqueness no longer depends on process state. The commit message: "Replaces stateful temp directory generation with fs.mkdtemp to eliminate stale timestamp bug." A test creates fixtures in parallel to check uniqueness ([`dbf04ef`](https://github.com/privatenumber/fs-fixture/commit/dbf04ef2d4c581f7f56efc468f4a64ef69432a74)).
 
-The pluggable `fs` option ([`f8249e1`](https://github.com/privatenumber/fs-fixture/commit/f8249e19f348fe73cb4e3da781ebd21c542009fa), v2.13.0) made `mkdtemp` optional, because virtual filesystems may not implement it. The fallback name `fs-fixture-<pid>-<counter>` uses a process-wide counter. It is unique within one process and one base directory, which is enough for an in-memory filesystem that one process owns.
+The pluggable `fs` option ([`f8249e1`](https://github.com/privatenumber/fs-fixture/commit/f8249e19f348fe73cb4e3da781ebd21c542009fa), v2.13.0) made `mkdtemp` optional, because virtual filesystems may not implement it. The fallback name is `fs-fixture-<random UUID>`, and fs-fixture creates it with a non-recursive `mkdir()`, so a collision throws `EEXIST` instead of two fixtures sharing one directory. `@platformatic/vfs` has no `mkdtemp()`, so its tests always use this fallback.
+
+The first fallback name, `fs-fixture-<pid>-<counter>`, used a counter at module scope. The counter belonged to one module instance, not to the process. When the ESM and CJS builds were both loaded, each started at 1, and `mkdir({ recursive: true })` silently gave both fixtures the same directory. Removing one fixture removed the other. The test `fixtures without mkdtemp do not conflict across module instances` in [`tests/custom-fs.ts`](../../tests/custom-fs.ts) loads two fresh module instances to reproduce this.
 
 ### Trailing separator was dropped
 

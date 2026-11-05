@@ -4,6 +4,9 @@ import { describe, test, expect } from 'manten';
 import { create, MemoryProvider } from '@platformatic/vfs';
 import { memfs } from 'memfs';
 import { createFixture, type FsPromises } from '#fs-fixture';
+import type * as fsFixtureModule from '#fs-fixture';
+
+type FsFixtureModule = typeof fsFixtureModule;
 
 describe('custom fs (BYOFS)', () => {
 	test('creates from FileTree', async () => {
@@ -292,6 +295,24 @@ describe('custom fs (BYOFS)', () => {
 		await expect(
 			createFixture('./some-path', { fs }),
 		).rejects.toThrow(TypeError);
+	});
+
+	test('fixtures without mkdtemp do not conflict across module instances', async () => {
+		// @platformatic/vfs has no mkdtemp(), so fs-fixture generates the fixture name
+		const fs = create(new MemoryProvider()).promises;
+
+		// Query strings load fresh module instances, like the ESM and CJS builds in one process
+		const fsFixtureUrl = import.meta.resolve('#fs-fixture');
+		const [first, second] = await Promise.all([
+			import(`${fsFixtureUrl}?instance=1`),
+			import(`${fsFixtureUrl}?instance=2`),
+		]) as [FsFixtureModule, FsFixtureModule];
+
+		await using firstFixture = await first.createFixture({ 'a.txt': 'a' }, { fs });
+		await using secondFixture = await second.createFixture({ 'b.txt': 'b' }, { fs });
+
+		expect(firstFixture.path).not.toBe(secondFixture.path);
+		expect(await firstFixture.readdir()).toStrictEqual(['a.txt']);
 	});
 
 	test('parallel fixtures do not conflict', async () => {
