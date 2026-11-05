@@ -23,7 +23,7 @@ type Api = ApiBase & {
 };
 
 export type FileTree = {
-	[path: string]: string | Buffer | FileTree | ((api: Api) => string | Buffer | Symlink);
+	[path: string]: string | Buffer | FileTree | ((api: Api) => string | Buffer | Symlink | FileTree);
 };
 
 export const flattenFileTree = (

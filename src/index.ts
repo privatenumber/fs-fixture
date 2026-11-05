@@ -1,10 +1,11 @@
 import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
+import os from 'node:os';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FsFixture, type FsFixtureType } from './fs-fixture.js';
 import type { FsPromises } from './utils/fs-types.js';
-import { osTemporaryDirectory } from './utils/temporary-directory.js';
 import {
 	type FileTree, type ApiBase, flattenFileTree, Directory, File, Symlink,
 } from './utils/flatten-file-tree.js';
@@ -63,8 +64,6 @@ export type CreateFixtureOptions = {
 	fs?: FsPromises;
 };
 
-let fixtureCounter = 0;
-
 const createFileTree = async (
 	fileTree: FileTree,
 	fixture: FsFixtureType,
@@ -89,7 +88,8 @@ const createFileTree = async (
 
 	await settleAll(
 		Array.from(directories).map(
-			directory => fixture.fs.mkdir(directory, { recursive: true }),
+			// async turns a synchronous throw into a rejection, so settleAll() still waits for siblings
+			async directory => fixture.fs.mkdir(directory, { recursive: true }),
 		),
 	);
 
@@ -188,9 +188,12 @@ const createFixturePath = async (
 ) => {
 	const temporaryDirectory = tempDir
 		? path.resolve(typeof tempDir === 'string' ? tempDir : fileURLToPath(tempDir))
-		: osTemporaryDirectory;
+		// fs/promises realpath is native, so it also expands Windows 8.3 short names such as RUNNER~1
+		: await fs.realpath(os.tmpdir());
 
-	if (tempDir) {
+	// The OS temporary directory exists on disk, but may not exist in a custom fs such as memfs.
+	// On disk it is skipped: recursive mkdir() of a Windows drive root throws EPERM
+	if (tempDir || fsApi !== fs) {
 		await fsApi.mkdir(temporaryDirectory, { recursive: true });
 	}
 
@@ -198,12 +201,10 @@ const createFixturePath = async (
 		return fsApi.mkdtemp(path.join(temporaryDirectory, 'fs-fixture-'));
 	}
 
-	fixtureCounter += 1;
-	const fixturePath = path.join(
-		temporaryDirectory,
-		`fs-fixture-${process.pid}-${fixtureCounter}`,
-	);
-	await fsApi.mkdir(fixturePath, { recursive: true });
+	// A random name does not depend on module state, so it stays collision-resistant across
+	// module instances, such as the ESM and CJS builds. Without recursive, a collision throws EEXIST
+	const fixturePath = path.join(temporaryDirectory, `fs-fixture-${randomUUID()}`);
+	await fsApi.mkdir(fixturePath);
 	return fixturePath;
 };
 

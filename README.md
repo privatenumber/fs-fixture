@@ -110,7 +110,7 @@ The initializer receives the new fixture before it is returned. It can perform s
 
 ### Working with files
 
-`readFile` and `writeFile` inherit their type signatures directly from Node.js `fs/promises`. `readdir` preserves Node.js overloads and also lists the fixture root when called without a path.
+`readFile` and `writeFile` inherit their type signatures directly from Node.js `fs/promises`. `readdir` preserves Node.js overloads and also lists the fixture root when called without a path. String and `Buffer` paths are relative to the fixture. A file `URL` is absolute, and a `FileHandle` is used as is.
 
 **Read files:**
 ```ts
@@ -178,7 +178,7 @@ const fixture = await createFixture({
 })
 ```
 
-Use a FileTree entry function for isolated dynamic file content. Use an initializer function when setup requires multiple imperative or ordered operations.
+A FileTree entry function returns file content, a symlink, or a nested FileTree for a directory. Use it for isolated dynamic content. Use an initializer function when setup requires multiple imperative or ordered operations.
 
 **Symlinks:**
 ```ts
@@ -251,7 +251,7 @@ const fixture = await createFixture({
 await fixture.readFile('src/index.js', 'utf8') // 'export default 42'
 ```
 
-Works with any library that implements the `fs/promises` API shape, including [@platformatic/vfs](https://github.com/platformatic/vfs), the future [`node:vfs`](https://github.com/nodejs/node/pull/61478), and [memfs](https://github.com/streamich/memfs).
+Works with any library that implements the `fs/promises` API shape, including [@platformatic/vfs](https://github.com/platformatic/vfs), the future [`node:vfs`](https://github.com/nodejs/node/pull/61478), and [memfs](https://github.com/streamich/memfs). memfs declares broader return types than `FsPromises`, so pass it as `memfs().fs.promises as FsPromises`.
 
 > [!NOTE]
 > With a custom fs, files only exist in that fs instance. Use `fixture.readFile()` or `fixture.fs` to access them — `fixture.path` is a virtual path that doesn't exist on the real disk.
@@ -306,8 +306,10 @@ const fixture = await createFixture({}, { tempDir: './custom-temp' })
 
 ```ts
 type FileTree = {
-    [path: string]: string | Buffer | FileTree | ((api: Api) => string | Buffer | Symlink)
+    [path: string]: string | Buffer | FileTree | FileTreeFunction
 }
+
+type FileTreeFunction = (api: Api) => string | Buffer | Symlink | FileTree
 
 type Api = {
     fixturePath: string // Fixture root path
@@ -330,10 +332,10 @@ import type { FsPromises } from 'fs-fixture'
 | Capability | Methods | Requirement |
 |------------|---------|-------------|
 | Core fixture operations | `readFile`, `writeFile`, `readdir`, `mkdir`, `rename`, `access` | Required |
-| Removal | `rm`, or `unlink` and `rmdir` | One removal strategy is required when calling `fixture.rm()` |
+| Removal | `rm`, or `unlink` and `rmdir` | One removal strategy is required when calling `fixture.rm()`. Without one, a fixture whose setup fails stays in the fs. |
 | Symlinks | `symlink` | Required only when a FileTree contains a symlink |
 | Copying | `cp` | Required only when calling `fixture.cp()` |
-| Temporary directories | `mkdtemp` | Optional. fs-fixture generates fixture paths with a counter when omitted. |
+| Temporary directories | `mkdtemp` | Optional. When omitted, fs-fixture names each fixture `fs-fixture-<random UUID>`. |
 
 The exported type defines the exact overloads and option shapes. `fixture.readdir()` is a fixture convenience method. A custom fs `readdir` always receives the fixture's absolute path.
 </details>

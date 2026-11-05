@@ -3,7 +3,9 @@ import type { Dirent } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, test, expect } from 'manten';
+import {
+	describe, test, expect, skip,
+} from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
 
 describe('fs-fixture', () => {
@@ -238,6 +240,43 @@ describe('fs-fixture', () => {
 		});
 	});
 
+	test('file methods accept Buffer, URL, and FileHandle paths', async () => {
+		await using fixture = await createFixture({ 'a.txt': 'a' });
+
+		// Buffer paths are relative to the fixture, like strings
+		await fixture.writeFile(Buffer.from('b.txt'), 'b');
+		expect(await fixture.readFile(Buffer.from('b.txt'), 'utf8')).toBe('b');
+		const entries = await fixture.readdir(Buffer.from(''));
+		expect(entries.sort()).toStrictEqual(['a.txt', 'b.txt']);
+
+		// Decoding non-UTF-8 bytes would make distinct Buffer paths name the same file
+		await expect(fixture.readFile(Buffer.from([0xFF]))).rejects.toThrow('valid UTF-8');
+
+		// File URLs are absolute
+		const fixtureUrl = pathToFileURL(fixture.path + path.sep);
+		expect(await fixture.readFile(new URL('a.txt', fixtureUrl), 'utf8')).toBe('a');
+
+		// An invalid URL rejects instead of throwing synchronously, like fs/promises
+		await expect(fixture.readFile(new URL('https://example.com/a.txt'))).rejects.toThrow();
+
+		const handle = await fs.open(fixture.getPath('a.txt'));
+		try {
+			expect(await fixture.readFile(handle, 'utf8')).toBe('a');
+		} finally {
+			await handle.close();
+		}
+	});
+
+	test('FileTree function can return a nested FileTree', async () => {
+		await using fixture = await createFixture({
+			directory: ({ filePath }) => ({
+				'path.txt': filePath,
+			}),
+		});
+
+		expect(await fixture.readFile('directory/path.txt', 'utf8')).toBe(fixture.getPath('directory'));
+	});
+
 	test('JSON operations', async () => {
 		const fixture = await createFixture();
 
@@ -331,6 +370,41 @@ describe('fs-fixture', () => {
 
 		await rm();
 		expect(await exists()).toBe(false);
+	});
+
+	test('fixture path is canonical when os.tmpdir() is not', async () => {
+		// Linux is case-sensitive, so it has no non-canonical alias that the JS realpath keeps
+		if (process.platform === 'linux') {
+			skip('Requires a case-insensitive filesystem');
+		}
+
+		// fs/promises realpath is native: it resolves symlinks, case, and Windows 8.3 short names
+		const canonicalTemporaryDirectory = await fs.realpath(os.tmpdir());
+		const alias = canonicalTemporaryDirectory.toUpperCase();
+		expect(alias).not.toBe(canonicalTemporaryDirectory);
+		expect(await fs.realpath(alias)).toBe(canonicalTemporaryDirectory);
+
+		// os.tmpdir() reads TMPDIR on POSIX, and TEMP or TMP on Windows
+		const variables = ['TMPDIR', 'TEMP', 'TMP'];
+		const originalValues = variables.map(name => process.env[name]);
+		for (const name of variables) {
+			process.env[name] = alias;
+		}
+
+		// Concurrent tests may also see the alias. It is the same directory, so they still pass
+		try {
+			await using fixture = await createFixture();
+			expect(path.dirname(fixture.path)).toBe(canonicalTemporaryDirectory);
+		} finally {
+			for (const [index, name] of variables.entries()) {
+				const value = originalValues[index];
+				if (value === undefined) {
+					delete process.env[name];
+				} else {
+					process.env[name] = value;
+				}
+			}
+		}
 	});
 
 	test('custom temporary directory', async () => {

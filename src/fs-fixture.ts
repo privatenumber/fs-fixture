@@ -1,10 +1,47 @@
 import fs from 'node:fs/promises';
-import type { CopyOptions } from 'node:fs';
+import type { CopyOptions, PathLike } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import type { FsPromises } from './utils/fs-types.js';
 import { recursiveRm } from './utils/rm-polyfill.js';
 
 type FixtureReaddir = typeof fs.readdir & (() => Promise<string[]>);
+
+// A URL from another realm or a replaced global URL fails instanceof, like in Node's own check
+const isUrl = (value: object): value is URL => 'href' in value && 'protocol' in value;
+
+const isFileHandle = (
+	value: PathLike | fs.FileHandle,
+): value is fs.FileHandle => (
+	typeof value === 'object'
+	&& !Buffer.isBuffer(value)
+	&& !isUrl(value)
+);
+
+/**
+ * Node's fs/promises types accept these path forms, so the fixture file methods do too.
+ * A string or Buffer path is relative to the fixture. A file URL is always absolute,
+ * so it is used as is. FileHandles are read and written directly, not through the fs API.
+ */
+const resolvePath = (
+	fixture: FsFixture,
+	filePath: PathLike,
+) => {
+	if (typeof filePath === 'string') {
+		return fixture.getPath(filePath);
+	}
+
+	if (Buffer.isBuffer(filePath)) {
+		// path.join() needs a string, and decoding non-UTF-8 bytes would alias distinct paths
+		const decoded = filePath.toString();
+		if (!Buffer.from(decoded).equals(filePath)) {
+			throw new TypeError('Buffer paths must be valid UTF-8');
+		}
+		return fixture.getPath(decoded);
+	}
+
+	return fileURLToPath(filePath);
+};
 
 // Polyfill for Node v18
 if (typeof Symbol.asyncDispose !== 'symbol') {
@@ -70,7 +107,7 @@ export class FsFixture {
 	 *   Defaults to deleting the entire fixture.
 	 * @returns Promise that resolves when deletion is complete
 	 */
-	rm = (subpath = '') => {
+	rm = async (subpath = '') => {
 		const targetPath = this.getPath(subpath);
 		if (this.fs.rm) {
 			return this.fs.rm(targetPath, {
@@ -97,7 +134,7 @@ export class FsFixture {
 	 * @param options - Copy options (e.g., recursive, filter)
 	 * @returns Promise that resolves when copy is complete
 	 */
-	cp = (
+	cp = async (
 		sourcePath: string,
 		destinationSubpath?: string,
 		options?: CopyOptions,
@@ -162,12 +199,16 @@ export class FsFixture {
 	 *   When encoding is specified, returns a string; otherwise returns a Buffer.
 	 * @returns Promise resolving to file contents as string or Buffer
 	 */
-	readFile: typeof fs.readFile = ((
-		filePath: string,
+	readFile: typeof fs.readFile = (async (
+		filePath: PathLike | fs.FileHandle,
 		options?: Parameters<typeof fs.readFile>[1],
-	) => this.fs.readFile(
-		this.getPath(filePath),
-		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	) => (
+		isFileHandle(filePath)
+			? filePath.readFile(options as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+			: this.fs.readFile(
+				resolvePath(this, filePath),
+				options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+			)
 	)) as typeof fs.readFile;
 
 	/**
@@ -180,11 +221,11 @@ export class FsFixture {
 	 *   Use `{ withFileTypes: true }` to get Dirent objects.
 	 * @returns Promise resolving to array of file/directory names or Dirent objects
 	 */
-	readdir: FixtureReaddir = ((
-		directoryPath?: string,
+	readdir: FixtureReaddir = (async (
+		directoryPath?: PathLike,
 		options?,
 	) => this.fs.readdir(
-		this.getPath(directoryPath ?? ''),
+		resolvePath(this, directoryPath ?? ''),
 		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 	)) as FixtureReaddir;
 
@@ -196,14 +237,19 @@ export class FsFixture {
 	 * @param options - Optional encoding or write options
 	 * @returns Promise that resolves when file is written
 	 */
-	writeFile: typeof fs.writeFile = ((
-		filePath: string,
+	writeFile: typeof fs.writeFile = (async (
+		filePath: PathLike | fs.FileHandle,
 		data: string | Buffer,
 		...args
-	) => this.fs.writeFile(
-		this.getPath(filePath),
-		data,
-		...args as [any?], // eslint-disable-line @typescript-eslint/no-explicit-any
+	) => (
+		isFileHandle(filePath)
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			? filePath.writeFile(data, ...args as [any?])
+			: this.fs.writeFile(
+				resolvePath(this, filePath),
+				data,
+				...args as [any?], // eslint-disable-line @typescript-eslint/no-explicit-any
+			)
 	)) as typeof fs.writeFile;
 
 	/**

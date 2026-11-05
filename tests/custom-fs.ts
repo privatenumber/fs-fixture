@@ -1,7 +1,13 @@
+import os from 'node:os';
 import path from 'node:path';
+import nodeFs from 'node:fs/promises';
 import { describe, test, expect } from 'manten';
 import { create, MemoryProvider } from '@platformatic/vfs';
-import { createFixture } from '#fs-fixture';
+import { memfs } from 'memfs';
+import { createFixture, type FsPromises } from '#fs-fixture';
+import type * as fsFixtureModule from '#fs-fixture';
+
+type FsFixtureModule = typeof fsFixtureModule;
 
 describe('custom fs (BYOFS)', () => {
 	test('creates from FileTree', async () => {
@@ -24,6 +30,19 @@ describe('custom fs (BYOFS)', () => {
 		expect(await fixture.exists()).toBe(true);
 	});
 
+	// memfs mkdtemp() requires the parent directory to exist, like node:fs
+	test('creates fixture in memfs without tempDir', async () => {
+		// A fresh memfs only contains the root, so the parent is missing unless it is the root
+		expect(os.tmpdir()).not.toBe(path.parse(os.tmpdir()).root);
+
+		const { fs } = memfs();
+		await using fixture = await createFixture({
+			'file.txt': 'hello',
+		}, { fs: fs.promises as FsPromises });
+
+		expect(await fixture.readFile('file.txt', 'utf8')).toBe('hello');
+	});
+
 	test('creates from initializer', async () => {
 		const fs = create(new MemoryProvider()).promises;
 		await using fixture = await createFixture(async (fixture) => {
@@ -37,7 +56,7 @@ describe('custom fs (BYOFS)', () => {
 		expect(await fs.readFile(fixture.getPath('initialized/file.txt'), 'utf8')).toBe(fixture.path);
 	});
 
-	test('preserves initializer error when cleanup throws synchronously', async () => {
+	test('preserves initializer error when cleanup fails', async () => {
 		const memoryFs = create(new MemoryProvider()).promises;
 		const {
 			unlink: _unlink,
@@ -100,6 +119,75 @@ describe('custom fs (BYOFS)', () => {
 		expect(await fixtureResult).toBe(writeError);
 		expect(cleanupStarted).toBe(true);
 		await expect(memoryFs.access(fixturePath)).rejects.toThrow();
+	});
+
+	test('waits for directories before cleanup when mkdir throws synchronously', async () => {
+		const memoryFs = create(new MemoryProvider()).promises;
+		const delayedMkdir = Promise.withResolvers<void>();
+		const pendingMkdirStarted = Promise.withResolvers<void>();
+		const mkdirError = new Error('mkdir failed');
+		let cleanupStarted = false;
+		let fixturePath = '';
+
+		const fs = {
+			...memoryFs,
+			mkdir: (...args: Parameters<typeof memoryFs.mkdir>) => {
+				const directory = String(args[0]);
+				if (directory.endsWith('fails')) {
+					throw mkdirError;
+				}
+
+				if (directory.endsWith('pending')) {
+					pendingMkdirStarted.resolve();
+					return delayedMkdir.promise.then(() => memoryFs.mkdir(...args));
+				}
+
+				return memoryFs.mkdir(...args);
+			},
+			rmdir: async (...args: Parameters<typeof memoryFs.rmdir>) => {
+				cleanupStarted = true;
+				return memoryFs.rmdir(...args);
+			},
+		};
+
+		const fixtureResult = createFixture((fixture) => {
+			fixturePath = fixture.path;
+
+			return {
+				pending: {},
+				fails: {},
+			};
+		}, { fs }).then(
+			() => new Error('Expected fixture creation to fail'),
+			error => error,
+		);
+
+		// Wait for directory creation to start, so a premature cleanup can happen first
+		await pendingMkdirStarted.promise;
+		await new Promise(setImmediate);
+		expect(cleanupStarted).toBe(false);
+
+		delayedMkdir.resolve();
+
+		expect(await fixtureResult).toBe(mkdirError);
+		await expect(memoryFs.access(fixturePath)).rejects.toThrow();
+	});
+
+	test('rm() and cp() reject when the fs does not support them', async () => {
+		const memoryFs = create(new MemoryProvider()).promises;
+		const {
+			unlink: _unlink,
+			rmdir: _rmdir,
+			...fs
+		} = memoryFs;
+		const fixture = await createFixture({}, { fs });
+
+		try {
+			await expect(fixture.rm()).rejects.toThrow('rm() requires');
+			await expect(fixture.cp('/file.txt')).rejects.toThrow('cp() requires');
+		} finally {
+			await memoryFs.rmdir(fixture.path);
+		}
 	});
 
 	test('aggregates FileTree write failures', async () => {
@@ -279,6 +367,24 @@ describe('custom fs (BYOFS)', () => {
 		).rejects.toThrow(TypeError);
 	});
 
+	test('fixtures without mkdtemp do not conflict across module instances', async () => {
+		// @platformatic/vfs has no mkdtemp(), so fs-fixture generates the fixture name
+		const fs = create(new MemoryProvider()).promises;
+
+		// Query strings load fresh module instances, like the ESM and CJS builds in one process
+		const fsFixtureUrl = import.meta.resolve('#fs-fixture');
+		const [first, second] = await Promise.all([
+			import(`${fsFixtureUrl}?instance=1`),
+			import(`${fsFixtureUrl}?instance=2`),
+		]) as [FsFixtureModule, FsFixtureModule];
+
+		await using firstFixture = await first.createFixture({ 'a.txt': 'a' }, { fs });
+		await using secondFixture = await second.createFixture({ 'b.txt': 'b' }, { fs });
+
+		expect(firstFixture.path).not.toBe(secondFixture.path);
+		expect(await firstFixture.readdir()).toStrictEqual(['a.txt']);
+	});
+
 	test('parallel fixtures do not conflict', async () => {
 		const fs = create(new MemoryProvider()).promises;
 		const fixtures = await Promise.all(
@@ -297,5 +403,20 @@ describe('custom fs (BYOFS)', () => {
 		} finally {
 			await Promise.all(fixtures.map(f => f.rm()));
 		}
+	});
+
+	test('reads and writes a FileHandle without the custom fs', async () => {
+		await using diskFixture = await createFixture({ 'a.txt': 'a' });
+		const fs = create(new MemoryProvider()).promises;
+		await using fixture = await createFixture({}, { fs });
+
+		const handle = await nodeFs.open(diskFixture.getPath('a.txt'), 'r+');
+		try {
+			expect(await fixture.readFile(handle, 'utf8')).toBe('a');
+			await fixture.writeFile(handle, 'b');
+		} finally {
+			await handle.close();
+		}
+		expect(await diskFixture.readFile('a.txt', 'utf8')).toBe('ab');
 	});
 });
