@@ -38,9 +38,16 @@ The package exports the `FsFixture` class as a type, not as a runtime value. [#4
 - An initializer function as the whole source ([`fd5c6fb`](https://github.com/privatenumber/fs-fixture/commit/fd5c6fb5cab75dbe52e94a6aeada47ef7f439e92), v2.15.0) receives the live fixture. It can run ordered or imperative setup and return a `FileTree`, which fs-fixture creates afterward.
 - An empty object creates an empty directory ([#9](https://github.com/privatenumber/fs-fixture/pull/9), v2.8.0).
 
+## `templateFilter` skips the template root
+
+`fs.cp()` calls its filter for the source directory itself before its contents. If the filter rejects that root, nothing is copied, so a filter such as `src => src.endsWith('.js')` produced an empty fixture. [#10](https://github.com/privatenumber/fs-fixture/pull/10) makes fs-fixture accept the template root without calling `templateFilter`, so the filter only sees entries inside the template.
+
+- Released as a fix, not a breaking change. Rejecting the root only ever produced an empty fixture, and the docs never described the root call. The visible change is one fewer filter call.
+- The root check compares `path.toNamespacedPath(path.resolve(...))` of both paths. Node.js 18 on Windows passes `\\?\` namespaced paths to the filter, and a plain `path.resolve()` comparison missed the root there.
+- The tests in the `templateFilter` group of [`tests/index.ts`](../../tests/index.ts) cover the root and an async filter.
+
 ## Open proposals
 
-These PRs are open and record decisions that are not made yet:
+This PR is open and records a decision that is not made yet:
 
-- [#10](https://github.com/privatenumber/fs-fixture/pull/10) proposes that `templateFilter` skip the call for the template root directory itself, so that a filter such as `path => path.endsWith('.ext')` works without a special case. The maintainer called it a breaking change and is holding it.
 - [#12](https://github.com/privatenumber/fs-fixture/pull/12) proposes a debug method that keeps a fixture on disk after the test. It has no description.
