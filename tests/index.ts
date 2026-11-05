@@ -214,6 +214,32 @@ describe('fs-fixture', () => {
 		expect(await fixture.exists()).toBe(false);
 	});
 
+	describe('templateFilter', () => {
+		test('is not called for the template root', async () => {
+			const calls: string[] = [];
+			await using fixture = await createFixture('./tests/fixture-template/', {
+				templateFilter: (sourcePath) => {
+					calls.push(path.basename(sourcePath));
+					return ['a', 'directory'].includes(path.basename(sourcePath));
+				},
+			});
+
+			expect(calls.sort()).toStrictEqual(['a', 'b', 'directory']);
+			expect(await fixture.exists('a')).toBe(true);
+			expect(await fixture.exists('directory')).toBe(true);
+			expect(await fixture.exists('directory/b')).toBe(false);
+		});
+
+		test('supports async filters that reject a directory', async () => {
+			await using fixture = await createFixture('./tests/fixture-template', {
+				templateFilter: async sourcePath => path.basename(sourcePath) !== 'directory',
+			});
+
+			expect(await fixture.exists('a')).toBe(true);
+			expect(await fixture.exists('directory')).toBe(false);
+		});
+	});
+
 	test('file methods accept Buffer, URL, and FileHandle paths', async () => {
 		await using fixture = await createFixture({ 'a.txt': 'a' });
 

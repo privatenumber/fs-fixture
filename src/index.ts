@@ -158,7 +158,15 @@ const initializeFixture = async (
 		}
 		await fixture.fs.cp(source, fixture.path, {
 			recursive: true,
-			filter: templateFilter,
+			// fs.cp() passes the template root to the filter first, and rejecting it copies nothing.
+			// Node 18 on Windows passes \\?\ namespaced paths, so compare namespaced paths
+			filter: templateFilter && (
+				(sourcePath, destinationPath) => (
+					path.toNamespacedPath(path.resolve(sourcePath))
+						=== path.toNamespacedPath(path.resolve(source))
+					|| templateFilter(sourcePath, destinationPath)
+				)
+			),
 		});
 		return;
 	}
