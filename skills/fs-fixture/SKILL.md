@@ -55,6 +55,8 @@ await using fixture = await createFixture({ 'file.txt': 'content' })
 | `mv(source, dest)` | Move or rename within fixture |
 | `rm(path?)` | Delete path, or entire fixture if omitted |
 
+`readFile`, `writeFile`, and `readdir` also accept a `Buffer` path, relative to the fixture like a string, an absolute file `URL`, and for `readFile` and `writeFile` an open `FileHandle`.
+
 ## FileTree Values
 
 | Type | Example |
@@ -62,7 +64,7 @@ await using fixture = await createFixture({ 'file.txt': 'content' })
 | `string` | `'file content'` |
 | `Buffer` | `Buffer.from([0x89, 0x50])` |
 | Nested object | `{ dir: { 'file.txt': 'content' } }` |
-| Function | `({ fixturePath, filePath, getPath, symlink }) => symlink('./target')` |
+| Function | `({ fixturePath, filePath, getPath, symlink }) => symlink('./target')`. Returns content, a symlink, or a nested FileTree |
 
 Path syntax — these are equivalent:
 ```ts

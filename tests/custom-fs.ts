@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import nodeFs from 'node:fs/promises';
 import { describe, test, expect } from 'manten';
 import { create, MemoryProvider } from '@platformatic/vfs';
 import { memfs } from 'memfs';
@@ -402,5 +403,20 @@ describe('custom fs (BYOFS)', () => {
 		} finally {
 			await Promise.all(fixtures.map(f => f.rm()));
 		}
+	});
+
+	test('reads and writes a FileHandle without the custom fs', async () => {
+		await using diskFixture = await createFixture({ 'a.txt': 'a' });
+		const fs = create(new MemoryProvider()).promises;
+		await using fixture = await createFixture({}, { fs });
+
+		const handle = await nodeFs.open(diskFixture.getPath('a.txt'), 'r+');
+		try {
+			expect(await fixture.readFile(handle, 'utf8')).toBe('a');
+			await fixture.writeFile(handle, 'b');
+		} finally {
+			await handle.close();
+		}
+		expect(await diskFixture.readFile('a.txt', 'utf8')).toBe('ab');
 	});
 });

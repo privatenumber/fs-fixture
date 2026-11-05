@@ -214,6 +214,43 @@ describe('fs-fixture', () => {
 		expect(await fixture.exists()).toBe(false);
 	});
 
+	test('file methods accept Buffer, URL, and FileHandle paths', async () => {
+		await using fixture = await createFixture({ 'a.txt': 'a' });
+
+		// Buffer paths are relative to the fixture, like strings
+		await fixture.writeFile(Buffer.from('b.txt'), 'b');
+		expect(await fixture.readFile(Buffer.from('b.txt'), 'utf8')).toBe('b');
+		const entries = await fixture.readdir(Buffer.from(''));
+		expect(entries.sort()).toStrictEqual(['a.txt', 'b.txt']);
+
+		// Decoding non-UTF-8 bytes would make distinct Buffer paths name the same file
+		await expect(fixture.readFile(Buffer.from([0xFF]))).rejects.toThrow('valid UTF-8');
+
+		// File URLs are absolute
+		const fixtureUrl = pathToFileURL(fixture.path + path.sep);
+		expect(await fixture.readFile(new URL('a.txt', fixtureUrl), 'utf8')).toBe('a');
+
+		// An invalid URL rejects instead of throwing synchronously, like fs/promises
+		await expect(fixture.readFile(new URL('https://example.com/a.txt'))).rejects.toThrow();
+
+		const handle = await fs.open(fixture.getPath('a.txt'));
+		try {
+			expect(await fixture.readFile(handle, 'utf8')).toBe('a');
+		} finally {
+			await handle.close();
+		}
+	});
+
+	test('FileTree function can return a nested FileTree', async () => {
+		await using fixture = await createFixture({
+			directory: ({ filePath }) => ({
+				'path.txt': filePath,
+			}),
+		});
+
+		expect(await fixture.readFile('directory/path.txt', 'utf8')).toBe(fixture.getPath('directory'));
+	});
+
 	test('JSON operations', async () => {
 		const fixture = await createFixture();
 

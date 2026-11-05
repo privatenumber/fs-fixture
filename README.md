@@ -110,7 +110,7 @@ The initializer receives the new fixture before it is returned. It can perform s
 
 ### Working with files
 
-`readFile` and `writeFile` inherit their type signatures directly from Node.js `fs/promises`. `readdir` preserves Node.js overloads and also lists the fixture root when called without a path.
+`readFile` and `writeFile` inherit their type signatures directly from Node.js `fs/promises`. `readdir` preserves Node.js overloads and also lists the fixture root when called without a path. String and `Buffer` paths are relative to the fixture. A file `URL` is absolute, and a `FileHandle` is used as is.
 
 **Read files:**
 ```ts
@@ -178,7 +178,7 @@ const fixture = await createFixture({
 })
 ```
 
-Use a FileTree entry function for isolated dynamic file content. Use an initializer function when setup requires multiple imperative or ordered operations.
+A FileTree entry function returns file content, a symlink, or a nested FileTree for a directory. Use it for isolated dynamic content. Use an initializer function when setup requires multiple imperative or ordered operations.
 
 **Symlinks:**
 ```ts
@@ -306,8 +306,10 @@ const fixture = await createFixture({}, { tempDir: './custom-temp' })
 
 ```ts
 type FileTree = {
-    [path: string]: string | Buffer | FileTree | ((api: Api) => string | Buffer | Symlink)
+    [path: string]: string | Buffer | FileTree | FileTreeFunction
 }
+
+type FileTreeFunction = (api: Api) => string | Buffer | Symlink | FileTree
 
 type Api = {
     fixturePath: string // Fixture root path
