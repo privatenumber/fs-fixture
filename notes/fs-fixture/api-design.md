@@ -43,6 +43,7 @@ The package exports the `FsFixture` class as a type, not as a runtime value. [#4
 `fs.cp()` calls its filter for the source directory itself before its contents. If the filter rejects that root, nothing is copied, so a filter such as `src => src.endsWith('.js')` produced an empty fixture. [#10](https://github.com/privatenumber/fs-fixture/pull/10) makes fs-fixture accept the template root without calling `templateFilter`, so the filter only sees entries inside the template.
 
 - This is a fix, not a breaking change. Rejecting the root only ever produced an empty fixture, and the docs never described the root call. The visible change is one fewer filter call.
+- Accepted risk: `templateFilter` is typed as the `fs.cp()` filter, which is also called for the root. Two kinds of filters behave differently: one with side effects, such as recording every path, no longer sees the root, and one that rejected the root on purpose to copy nothing now copies the template.
 - The root check compares `path.toNamespacedPath(path.resolve(...))` of both paths. Node.js 18 on Windows passes `\\?\` namespaced paths to the filter, and a plain `path.resolve()` comparison missed the root there.
 - The tests in the `templateFilter` group of [`tests/index.ts`](../../tests/index.ts) cover the root and an async filter.
 
