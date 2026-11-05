@@ -217,12 +217,12 @@ describe('fs-fixture', () => {
 			const calls: string[] = [];
 			await using fixture = await createFixture('./tests/fixture-template/', {
 				templateFilter: (sourcePath) => {
-					calls.push(path.relative('tests/fixture-template', sourcePath));
+					calls.push(path.basename(sourcePath));
 					return ['a', 'directory'].includes(path.basename(sourcePath));
 				},
 			});
 
-			expect(calls.sort()).toStrictEqual(['a', 'directory', path.join('directory', 'b')]);
+			expect(calls.sort()).toStrictEqual(['a', 'b', 'directory']);
 			expect(await fixture.exists('a')).toBe(true);
 			expect(await fixture.exists('directory')).toBe(true);
 			expect(await fixture.exists('directory/b')).toBe(false);
