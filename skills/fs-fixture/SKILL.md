@@ -36,7 +36,7 @@ await using fixture = await createFixture({ 'file.txt': 'content' })
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `tempDir` | `string \| URL` | `os.tmpdir()` | Custom parent directory |
-| `templateFilter` | `(src, dest) => boolean` | — | Filter files when copying template |
+| `templateFilter` | `(src, dest) => boolean` | — | Filter template entries. Not called for the template root |
 
 ## FsFixture Methods
 

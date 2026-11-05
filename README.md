@@ -268,7 +268,7 @@ Creates a temporary fixture directory and returns a `FsFixture` instance.
 **Parameters:**
 - `source` (optional): String path to template directory, `FileTree` object defining the structure, or initializer function
 - `options.tempDir` (optional): Custom temp directory. Defaults to `os.tmpdir()`
-- `options.templateFilter` (optional): Filter function when copying from template directory
+- `options.templateFilter` (optional): Filter function when copying from a template directory. It is called for each entry inside the template, not for the template directory itself.
 - `options.fs` (optional): Custom `fs/promises`-compatible API for virtual filesystem support
 
 **Returns:** `Promise<FsFixture>`

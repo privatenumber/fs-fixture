@@ -158,7 +158,13 @@ const initializeFixture = async (
 		}
 		await fixture.fs.cp(source, fixture.path, {
 			recursive: true,
-			filter: templateFilter,
+			// fs.cp() passes the template root to the filter first, and rejecting it copies nothing
+			filter: templateFilter && (
+				(sourcePath, destinationPath) => (
+					path.resolve(sourcePath) === path.resolve(source)
+					|| templateFilter(sourcePath, destinationPath)
+				)
+			),
 		});
 		return;
 	}
