@@ -1,7 +1,12 @@
 import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
 import path from 'node:path';
+import type { FsPromises } from './utils/fs-types.js';
+import { recursiveRm } from './utils/rm-polyfill.js';
 
+type FixtureReaddir = typeof fs.readdir & (() => Promise<string[]>);
+
+// Polyfill for Node v18
 if (typeof Symbol.asyncDispose !== 'symbol') {
 	Object.defineProperty(Symbol, 'asyncDispose', {
 		configurable: false,
@@ -13,107 +18,238 @@ if (typeof Symbol.asyncDispose !== 'symbol') {
 
 export class FsFixture {
 	/**
-	Path to the fixture directory.
-	*/
+	 * Path to the fixture directory.
+	 */
 	readonly path: string;
 
+	readonly fs: FsPromises;
+
 	/**
-	Create a Fixture instance from a path. Does not create the fixture directory.
-	*/
-	constructor(fixturePath: string) {
+	 * Create a Fixture instance from a path. Does not create the fixture directory.
+	 *
+	 * @param fixturePath - The path to the fixture directory
+	 * @param fsApi - Optional fs/promises-compatible API. Defaults to real node:fs/promises.
+	 */
+	constructor(
+		fixturePath: string,
+		fsApi?: FsPromises,
+	) {
 		this.path = fixturePath;
+		this.fs = fsApi ?? fs;
 	}
 
 	/**
-	Get the full path to a subpath in the fixture directory.
-	*/
-	getPath(...subpaths: string[]) {
-		return path.join(this.path, ...subpaths);
-	}
+	 * Get the full path to a subpath in the fixture directory.
+	 *
+	 * @param subpaths - Path segments to join with the fixture directory
+	 * @returns The absolute path to the subpath
+	 *
+	 * @example
+	 * ```ts
+	 * fixture.getPath('dir', 'file.txt')
+	 * // => '/tmp/fs-fixture-123/dir/file.txt'
+	 * ```
+	 */
+	getPath = (...subpaths: string[]) => path.join(this.path, ...subpaths);
 
 	/**
-	Check if the fixture exists. Pass in a subpath to check if it exists.
-	*/
-	exists(subpath = '') {
-		return fs.access(this.getPath(subpath)).then(
-			() => true,
-			() => false,
+	 * Check if the fixture exists. Pass in a subpath to check if it exists.
+	 *
+	 * @param subpath - Optional subpath to check within the fixture directory
+	 * @returns Promise resolving to true if the path exists, false otherwise
+	 */
+	exists = (subpath = '') => this.fs.access(this.getPath(subpath)).then(
+		() => true,
+		() => false,
+	);
+
+	/**
+	 * Delete the fixture directory or a subpath within it.
+	 *
+	 * @param subpath - Optional subpath to delete within the fixture directory.
+	 *   Defaults to deleting the entire fixture.
+	 * @returns Promise that resolves when deletion is complete
+	 */
+	rm = (subpath = '') => {
+		const targetPath = this.getPath(subpath);
+		if (this.fs.rm) {
+			return this.fs.rm(targetPath, {
+				recursive: true,
+				force: true,
+			});
+		}
+		if (!this.fs.unlink || !this.fs.rmdir) {
+			throw new Error('rm() requires the fs API to support rm(), or unlink() + rmdir()');
+		}
+		return recursiveRm(
+			this.fs as FsPromises & Required<Pick<FsPromises, 'unlink' | 'rmdir'>>,
+			targetPath,
 		);
-	}
+	};
 
 	/**
-	Delete the fixture directory. Pass in a subpath to delete it.
-	*/
-	rm(subpath = '') {
-		return fs.rm(this.getPath(subpath), {
-			recursive: true,
-			force: true,
-		});
-	}
-
-	/**
-	Copy a path into the fixture directory.
-	*/
-	cp(
+	 * Copy a file or directory into the fixture directory.
+	 *
+	 * @param sourcePath - The source path to copy from
+	 * @param destinationSubpath - Optional destination path within the fixture.
+	 *   If omitted, uses the basename of sourcePath.
+	 *   If ends with path separator, appends basename of sourcePath.
+	 * @param options - Copy options (e.g., recursive, filter)
+	 * @returns Promise that resolves when copy is complete
+	 */
+	cp = (
 		sourcePath: string,
 		destinationSubpath?: string,
 		options?: CopyOptions,
-	) {
+	) => {
+		if (!this.fs.cp) {
+			throw new Error('cp() requires the fs API to support cp()');
+		}
+
 		if (!destinationSubpath) {
 			destinationSubpath = path.basename(sourcePath);
-		} else if (destinationSubpath.endsWith(path.sep)) {
+		} else if (destinationSubpath.endsWith('/') || destinationSubpath.endsWith(path.sep)) {
 			destinationSubpath += path.basename(sourcePath);
 		}
 
-		return fs.cp(
+		return this.fs.cp(
 			sourcePath,
 			this.getPath(destinationSubpath),
 			options,
 		);
-	}
+	};
 
 	/**
-	Create a file in the fixture directory.
-	*/
-	writeFile(filePath: string, content: string) {
-		return fs.writeFile(
-			this.getPath(filePath),
-			content,
-		);
-	}
+	 * Create a new folder in the fixture directory (including parent directories).
+	 *
+	 * @param folderPath - The folder path to create within the fixture
+	 * @returns Promise that resolves when directory is created
+	 */
+	mkdir = (folderPath: string) => this.fs.mkdir(this.getPath(folderPath), {
+		recursive: true,
+	});
 
 	/**
-	Create a JSON file in the fixture directory.
-	*/
-	writeJson(filePath: string, json: unknown) {
-		return this.writeFile(
-			filePath,
-			JSON.stringify(json, null, 2),
-		);
-	}
+	 * Move or rename a file or directory within the fixture.
+	 * This is a wrapper around `node:fs/promises.rename`.
+	 *
+	 * @param sourcePath - The source path relative to the fixture root
+	 * @param destinationPath - The destination path relative to the fixture root
+	 * @returns Promise that resolves when the move is complete
+	 *
+	 * @example
+	 * ```ts
+	 * // Rename a file
+	 * await fixture.mv('old-name.txt', 'new-name.txt')
+	 *
+	 * // Move a file into a directory
+	 * await fixture.mv('file.txt', 'src/file.txt')
+	 *
+	 * // Rename a directory
+	 * await fixture.mv('src', 'lib')
+	 * ```
+	 */
+	mv = (sourcePath: string, destinationPath: string) => this.fs.rename(
+		this.getPath(sourcePath),
+		this.getPath(destinationPath),
+	);
 
 	/**
-	Read a file from the fixture directory.
-	*/
-	readFile(
+	 * Read a file from the fixture directory.
+	 *
+	 * @param filePath - The file path within the fixture to read
+	 * @param options - Optional encoding or read options.
+	 *   When encoding is specified, returns a string; otherwise returns a Buffer.
+	 * @returns Promise resolving to file contents as string or Buffer
+	 */
+	readFile: typeof fs.readFile = ((
 		filePath: string,
-		encoding?: null,
-	): Promise<Buffer>;
+		options?: Parameters<typeof fs.readFile>[1],
+	) => this.fs.readFile(
+		this.getPath(filePath),
+		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	)) as typeof fs.readFile;
 
-	readFile(
-		filePath: string,
-		encoding: BufferEncoding,
-	): Promise<string>;
+	/**
+	 * Read the contents of a directory in the fixture.
+	 *
+	 * @param directoryPath - The directory path within the fixture to read.
+	 *   Omit it to read the fixture root.
+	 *   Pass an empty string when specifying options for the fixture root.
+	 * @param options - Optional read directory options.
+	 *   Use `{ withFileTypes: true }` to get Dirent objects.
+	 * @returns Promise resolving to array of file/directory names or Dirent objects
+	 */
+	readdir: FixtureReaddir = ((
+		directoryPath?: string,
+		options?,
+	) => this.fs.readdir(
+		this.getPath(directoryPath ?? ''),
+		options as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	)) as FixtureReaddir;
 
-	readFile(
+	/**
+	 * Create or overwrite a file in the fixture directory.
+	 *
+	 * @param filePath - The file path within the fixture to write
+	 * @param data - The content to write (string or Buffer)
+	 * @param options - Optional encoding or write options
+	 * @returns Promise that resolves when file is written
+	 */
+	writeFile: typeof fs.writeFile = ((
 		filePath: string,
-		encoding?: BufferEncoding | null,
-	) {
-		return fs.readFile(
-			this.getPath(filePath),
-			encoding,
-		);
-	}
+		data: string | Buffer,
+		...args
+	) => this.fs.writeFile(
+		this.getPath(filePath),
+		data,
+		...args as [any?], // eslint-disable-line @typescript-eslint/no-explicit-any
+	)) as typeof fs.writeFile;
+
+	/**
+	 * Read and parse a JSON file from the fixture directory.
+	 *
+	 * @param filePath - The JSON file path within the fixture to read
+	 * @returns Promise resolving to the parsed JSON content
+	 *
+	 * @example
+	 * ```ts
+	 * const data = await fixture.readJson<{ name: string }>('config.json')
+	 * console.log(data.name) // Typed as string
+	 * ```
+	 */
+	readJson = async <T = unknown>(filePath: string): Promise<T> => {
+		const content = await this.readFile(filePath, 'utf8');
+		return JSON.parse(content) as T;
+	};
+
+	/**
+	 * Create or overwrite a JSON file in the fixture directory.
+	 *
+	 * @param filePath - The JSON file path within the fixture to write
+	 * @param json - The data to serialize as JSON
+	 * @param space - Number of spaces or string to use for indentation. Defaults to 2.
+	 * @returns Promise that resolves when file is written
+	 *
+	 * @example
+	 * ```ts
+	 * // Default 2-space indentation
+	 * await fixture.writeJson('config.json', { key: 'value' })
+	 *
+	 * // 4-space indentation
+	 * await fixture.writeJson('config.json', { key: 'value' }, 4)
+	 *
+	 * // Tab indentation
+	 * await fixture.writeJson('config.json', { key: 'value' }, '\t')
+	 *
+	 * // Minified (no formatting)
+	 * await fixture.writeJson('config.json', { key: 'value' }, 0)
+	 * ```
+	 */
+	writeJson = (filePath: string, json: unknown, space: string | number = 2) => this.writeFile(
+		filePath,
+		JSON.stringify(json, null, space),
+	);
 
 	/**
 	 * Resource management cleanup

@@ -1,12 +1,15 @@
 {
 	"compilerOptions": {
-		"lib": [
-			"ESNext",
+		"target": "esnext",
+		"module": "nodenext",
+		"types": [
+			"node",
 		],
-		"module": "Preserve",
+		"allowImportingTsExtensions": true,
 		"strict": true,
 		"noEmit": true,
-		"esModuleInterop": true,
-		"isolatedModules": true,
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": true,
 	},
 }

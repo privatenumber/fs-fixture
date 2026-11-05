@@ -1,44 +1,104 @@
 import fs from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect } from 'manten';
+import { pathToFileURL } from 'node:url';
+import { describe, test, expect } from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
 
-const exists = (checkPath: string) => fs.access(checkPath).then(() => true, () => false);
-
-describe('fs-fixture', ({ test }) => {
+describe('fs-fixture', () => {
 	test('creates from no arg', async () => {
 		const fixture = await createFixture();
 
 		expect<FsFixture>(fixture);
-
-		// exists
 		expect(await fixture.exists()).toBe(true);
-		expect(await exists(fixture.path)).toBe(true);
 
-		// rm entire fixture
 		await fixture.rm();
-
-		// should not exist
 		expect(await fixture.exists()).toBe(false);
-		expect(await exists(fixture.path)).toBe(false);
 	});
 
 	test('creates from empty object', async () => {
 		const fixture = await createFixture({});
 
 		expect<FsFixture>(fixture);
-
-		// exists
 		expect(await fixture.exists()).toBe(true);
-		expect(await exists(fixture.path)).toBe(true);
 
-		// rm entire fixture
 		await fixture.rm();
-
-		// should not exist
 		expect(await fixture.exists()).toBe(false);
-		expect(await exists(fixture.path)).toBe(false);
+	});
+
+	test('creates from initializer', async () => {
+		await using fixture = await createFixture(async ({ writeJson }) => {
+			await writeJson('config.json', { enabled: true });
+		});
+
+		expect(await fixture.readJson('config.json')).toStrictEqual({ enabled: true });
+	});
+
+	test('creates files returned by initializer', async () => {
+		await using fixture = await createFixture(async fixture => ({
+			'paths.json': JSON.stringify({
+				fixturePath: fixture.path,
+				filePath: fixture.getPath('paths.json'),
+			}),
+		}));
+
+		expect(await fixture.readJson('paths.json')).toStrictEqual({
+			fixturePath: fixture.path,
+			filePath: fixture.getPath('paths.json'),
+		});
+	});
+
+	test('creates files returned after asynchronous initializer setup', async () => {
+		await using fixture = await createFixture(async (fixture) => {
+			await fixture.mkdir('initialized');
+
+			return {
+				'initialized/file.txt': 'content',
+			};
+		});
+
+		expect(await fixture.readFile('initialized/file.txt', 'utf8')).toBe('content');
+	});
+
+	test('overwrites files created by initializer', async () => {
+		await using fixture = await createFixture(async (fixture) => {
+			await fixture.writeFile('package.json', '{}');
+
+			return {
+				'package.json': JSON.stringify({ name: 'test-package' }),
+			};
+		});
+
+		expect(await fixture.readJson('package.json')).toStrictEqual({ name: 'test-package' });
+	});
+
+	test('cleans up when initializer fails', async () => {
+		let fixturePath = '';
+
+		await expect(createFixture((fixture) => {
+			fixturePath = fixture.path;
+			throw new Error('Initializer failed');
+		})).rejects.toThrow('Initializer failed');
+
+		expect(fixturePath).not.toBe('');
+		await expect(fs.access(fixturePath)).rejects.toThrow();
+	});
+
+	test('cleans up when initializer returned FileTree fails', async () => {
+		let fixturePath = '';
+
+		// @ts-expect-error Testing invalid initializer return
+		await expect(createFixture((fixture) => {
+			fixturePath = fixture.path;
+
+			return {
+				'file.txt': () => undefined,
+			};
+		})).rejects.toThrow(TypeError);
+
+		expect(fixturePath).not.toBe('');
+		await expect(fs.access(fixturePath)).rejects.toThrow();
 	});
 
 	test('creates from JSON', async () => {
@@ -55,21 +115,29 @@ describe('fs-fixture', ({ test }) => {
 				}),
 				d: ({ symlink }) => symlink('../directory/a'),
 			},
+			'emptyDirectory/a': {},
+			'buffer-file': Buffer.from('binary content'),
+			'buffer-from-function': () => Buffer.from('dynamic binary'),
 		});
 
 		expect<FsFixture>(fixture);
 
-		const filePathA = fixture.getPath('directory/a');
-		const filePathB = fixture.getPath('directory/b');
+		// Type assertions for readFile
+		const stringResult = await fixture.readFile('directory/a', 'utf8');
+		expect<string>(stringResult);
+
+		const bufferResult = await fixture.readFile('directory/a');
+		expect<Buffer>(bufferResult);
+
+		const nullEncodingResult = await fixture.readFile('directory/a', null);
+		expect<Buffer>(nullEncodingResult);
 
 		// exists
 		expect(await fixture.exists('directory/a')).toBe(true);
-		expect(await exists(filePathA)).toBe(true);
+		expect(await fixture.exists('emptyDirectory/a')).toBe(true);
 
 		// readFile
-		expect(await fs.readFile(filePathA, 'utf8')).toBe('a');
 		expect(await fixture.readFile('directory/a', 'utf8')).toBe('a');
-		expect(await fs.readFile(filePathB, 'utf8')).toBe('b');
 		expect(await fixture.readFile('directory/b', 'utf8')).toBe('b');
 		expect(await fixture.readFile('directory/c', 'utf8')).toBe(JSON.stringify({
 			fixturePath: fixture.path,
@@ -77,26 +145,50 @@ describe('fs-fixture', ({ test }) => {
 		}));
 		expect(await fixture.readFile('directory/d', 'utf8')).toBe('a');
 
-		await fixture.cp(filePathA, 'directory/a-copy');
-		expect(await fixture.readFile('directory/a-copy', 'utf8')).toBe('a');
+		// Test buffer files
+		expect(await fixture.readFile('buffer-file')).toEqual(Buffer.from('binary content'));
+		expect(await fixture.readFile('buffer-file', 'utf8')).toBe('binary content');
+		expect(await fixture.readFile('buffer-from-function')).toEqual(Buffer.from('dynamic binary'));
+		expect(await fixture.readFile('buffer-from-function', 'utf8')).toBe('dynamic binary');
 
-		await fixture.cp(filePathA);
-		expect(await fixture.readFile('a', 'utf8')).toBe('a');
+		// Type assertions for writeFile
+		await fixture.writeFile('test-string.txt', 'string content');
+		await fixture.writeFile('test-buffer.bin', Buffer.from('buffer content'));
+		await fixture.writeFile('test-encoding.txt', 'content', 'utf8');
+		await fixture.writeFile('test-options.txt', 'content', { encoding: 'utf8' });
 
-		await fixture.cp(filePathA, 'directory2/');
-		expect(await fixture.readFile('directory2/a', 'utf8')).toBe('a');
+		// Test readdir
+		const directoryContents = await fixture.readdir('directory');
+		expect(directoryContents).toContain('a');
+		expect(directoryContents).toContain('b');
+		expect(directoryContents).toContain('c');
+		expect(directoryContents).toContain('d');
+
+		const rootContents = await fixture.readdir();
+		expect(rootContents).toContain('directory');
+		expect(rootContents).toContain('emptyDirectory');
+
+		// Test readdir with withFileTypes
+		const directoryEntriesResult = await fixture.readdir('directory', { withFileTypes: true });
+		expect(directoryEntriesResult.length).toBeGreaterThan(0);
+		const fileEntry = directoryEntriesResult.find(entry => entry.name === 'a');
+		expect(fileEntry?.isFile()).toBe(true);
+
+		// Type assertions for readdir
+		const stringArray: string[] = await fixture.readdir();
+		expect(Array.isArray(stringArray)).toBe(true);
+
+		const direntArray: Dirent[] = await fixture.readdir('', { withFileTypes: true });
+		expect(Array.isArray(direntArray)).toBe(true);
+		expect(direntArray.find(entry => entry.name === 'directory')?.isDirectory()).toBe(true);
 
 		// rm file
 		await fixture.rm('directory/a');
-
 		expect(await fixture.exists('directory/a')).toBe(false);
 
 		// rm entire fixture
 		await fixture.rm();
-
-		// should not exist
 		expect(await fixture.exists()).toBe(false);
-		expect(await exists(fixture.path)).toBe(false);
 	});
 
 	test('creates from directory template', async () => {
@@ -104,56 +196,382 @@ describe('fs-fixture', ({ test }) => {
 
 		expect<FsFixture>(fixture);
 
-		const filePathA = fixture.getPath('a');
-		const filePathB = fixture.getPath('directory/b');
-
 		// exists
 		expect(await fixture.exists('a')).toBe(true);
-		expect(await exists(filePathA)).toBe(true);
 
 		// readFile
-		expect(await fs.readFile(filePathA, 'utf8')).toBe('a');
 		expect(await fixture.readFile('a', 'utf8')).toBe('a');
-		expect(await fs.readFile(filePathB, 'utf8')).toBe('b');
 		expect(await fixture.readFile('directory/b', 'utf8')).toBe('b');
 
 		// rm file
 		await fixture.rm('a');
-
 		expect(await fixture.exists('a')).toBe(false);
 
 		// rm entire fixture
 		await fixture.rm();
-
-		// should not exist
 		expect(await fixture.exists()).toBe(false);
-		expect(await exists(fixture.path)).toBe(false);
+	});
+
+	test('JSON operations', async () => {
+		const fixture = await createFixture();
+
+		// Test writeJson with default spacing (2 spaces)
+		await fixture.writeJson('default.json', {
+			name: 'test',
+			value: 123,
+		});
+		const defaultContent = await fixture.readFile('default.json', 'utf8');
+		expect(defaultContent).toBe('{\n  "name": "test",\n  "value": 123\n}');
+
+		// Test writeJson with custom spacing (4 spaces)
+		await fixture.writeJson('fourspace.json', {
+			name: 'test',
+			value: 123,
+		}, 4);
+		const fourSpaceContent = await fixture.readFile('fourspace.json', 'utf8');
+		expect(fourSpaceContent).toContain('"name"');
+		expect(fourSpaceContent).toContain('"value"');
+		// Verify 4-space indentation exists
+		expect(fourSpaceContent.includes('    "name"')).toBe(true);
+
+		// Test writeJson with tab indentation
+		await fixture.writeJson('tab.json', { name: 'test' }, '\t');
+		const tabContent = await fixture.readFile('tab.json', 'utf8');
+		expect(tabContent).toBe('{\n\t"name": "test"\n}');
+
+		// Test writeJson with minified (no spacing)
+		await fixture.writeJson('minified.json', {
+			name: 'test',
+			value: 123,
+		}, 0);
+		const minifiedContent = await fixture.readFile('minified.json', 'utf8');
+		expect(minifiedContent).toBe('{"name":"test","value":123}');
+
+		// Test readJson with generic type
+		type Config = { name: string;
+			value: number; };
+		const data = await fixture.readJson<Config>('default.json');
+		expect<Config>(data);
+		expect(data.name).toBe('test');
+		expect(data.value).toBe(123);
+
+		// Test readJson without generic type (returns unknown)
+		const unknownData = await fixture.readJson('default.json');
+		expect<unknown>(unknownData);
+
+		await fixture.rm();
 	});
 
 	test('explicit resource management', async () => {
-		let fixturePath: string;
+		let fixture: FsFixture;
 
 		{
-			await using fixture = await createFixture({});
-			fixturePath = fixture.path;
-			expect(await exists(fixturePath)).toBe(true);
+			await using temporaryFixture = await createFixture({});
+			fixture = temporaryFixture;
+			expect(await fixture.exists()).toBe(true);
 		}
-		expect(await exists(fixturePath)).toBe(false);
+
+		expect(await fixture.exists()).toBe(false);
+	});
+
+	test('methods can be destructured', async () => {
+		await using fixture = await createFixture({
+			'source.txt': 'content',
+		});
+		const {
+			getPath,
+			exists,
+			rm,
+			cp,
+			mkdir,
+			mv,
+			readFile,
+			readdir,
+			writeFile,
+			readJson,
+			writeJson,
+		} = fixture;
+
+		await mkdir('directory');
+		await writeFile('directory/file.txt', 'content');
+		await writeJson('config.json', { enabled: true });
+		await cp(getPath('source.txt'), 'copy.txt');
+		await mv('copy.txt', 'moved.txt');
+
+		expect(await exists('directory/file.txt')).toBe(true);
+		expect(await readFile('directory/file.txt', 'utf8')).toBe('content');
+		expect(await readJson<{ enabled: boolean }>('config.json')).toStrictEqual({ enabled: true });
+		expect(await readdir('')).toContain('moved.txt');
+
+		await rm();
+		expect(await exists()).toBe(false);
 	});
 
 	test('custom temporary directory', async () => {
-		const customTemporaryDirectory = path.join(await fs.realpath(os.tmpdir()), `custom-dir-${Date.now()}`);
+		const customTemporaryDirectory = path.join(os.tmpdir(), `custom-dir-${Date.now()}`);
 
 		const fixture = await createFixture({}, {
 			tempDir: customTemporaryDirectory,
 		});
 
 		expect(await fixture.exists()).toBe(true);
-		expect(fixture.getPath().startsWith(customTemporaryDirectory)).toBe(true);
+		expect(fixture.path.startsWith(customTemporaryDirectory)).toBe(true);
 
+		// Clean up (using fs.rm since we need to remove the custom parent directory)
 		await fs.rm(customTemporaryDirectory, {
 			recursive: true,
 			force: true,
+		});
+	});
+
+	test('custom temporary directory with URL', async () => {
+		const customUrl = new URL(
+			`custom-dir-${Date.now()}`,
+			pathToFileURL(os.tmpdir() + path.sep),
+		);
+
+		await using fixture = await createFixture({}, {
+			tempDir: customUrl,
+		});
+
+		await fs.access(fixture.path);
+	});
+
+	test('creates multiple fixtures in parallel without conflict', async () => {
+		const fixtureCount = 20;
+		const fixtures: FsFixture[] = [];
+
+		try {
+			const creationPromises = Array.from({ length: fixtureCount }, () => createFixture());
+			const createdFixtures = await Promise.all(creationPromises);
+			fixtures.push(...createdFixtures);
+
+			expect(fixtures.length).toBe(fixtureCount);
+
+			// Check that all paths are unique
+			const paths = new Set(fixtures.map(f => f.path));
+			expect(paths.size).toBe(fixtureCount);
+
+			// Check that all fixtures exist and have the prefix
+			for (const fixture of fixtures) {
+				expect(fixture.path).toContain('fs-fixture-');
+				await fs.access(fixture.path);
+			}
+		} finally {
+			// Cleanup all created fixtures
+			await Promise.all(fixtures.map(f => f.rm()));
+		}
+	});
+
+	test('handles deeply nested file paths without race conditions', async () => {
+		await using fixture = await createFixture({
+			'a/b/c/d.txt': 'deep file',
+			a: {
+				b: {
+					c: {
+						'other.txt': 'sibling',
+					},
+				},
+			},
+		});
+
+		expect(await fixture.readFile('a/b/c/d.txt', 'utf8')).toBe('deep file');
+		expect(await fixture.readFile('a/b/c/other.txt', 'utf8')).toBe('sibling');
+	});
+
+	test('creates parent directories for flat file paths', async () => {
+		await using fixture = await createFixture({
+			'src/tracked.js': 'const x = "unquoted"',
+			'src/untracked.js': 'const y = "also-unquoted"',
+			'nested/deep/file.txt': 'content',
+		});
+
+		expect(await fixture.readFile('src/tracked.js', 'utf8')).toBe('const x = "unquoted"');
+		expect(await fixture.readFile('src/untracked.js', 'utf8')).toBe('const y = "also-unquoted"');
+		expect(await fixture.readFile('nested/deep/file.txt', 'utf8')).toBe('content');
+	});
+
+	describe('cp', () => {
+		test('copies file with explicit destination', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'content',
+			});
+
+			await fixture.cp(fixture.getPath('source.txt'), 'copy.txt');
+			expect(await fixture.readFile('copy.txt', 'utf8')).toBe('content');
+		});
+
+		test('copies file using basename when destination omitted', async () => {
+			await using fixture = await createFixture({
+				'dir/source.txt': 'content',
+			});
+
+			await fixture.cp(fixture.getPath('dir/source.txt'));
+			expect(await fixture.readFile('source.txt', 'utf8')).toBe('content');
+		});
+
+		test('copies into directory with forward slash separator', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'content',
+			});
+
+			await fixture.mkdir('dest');
+			await fixture.cp(fixture.getPath('source.txt'), 'dest/');
+			expect(await fixture.readFile('dest/source.txt', 'utf8')).toBe('content');
+		});
+
+		test('copies into directory with path.sep separator', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'content',
+			});
+
+			await fixture.mkdir('dest');
+			await fixture.cp(fixture.getPath('source.txt'), `dest${path.sep}`);
+			expect(await fixture.readFile('dest/source.txt', 'utf8')).toBe('content');
+		});
+	});
+
+	describe('symlinks', () => {
+		test('creates file symlink with auto-detect type', async () => {
+			await using fixture = await createFixture({
+				'target.txt': 'content',
+				'link.txt': ({ symlink }) => symlink('./target.txt'),
+			});
+
+			expect(await fixture.readFile('link.txt', 'utf8')).toBe('content');
+		});
+
+		test('creates directory symlink with explicit dir type', async () => {
+			await using fixture = await createFixture({
+				src: {
+					'index.js': 'code',
+				},
+				lib: ({ symlink }) => symlink('./src', 'dir'),
+			});
+
+			expect(await fixture.exists('lib/index.js')).toBe(true);
+			expect(await fixture.readFile('lib/index.js', 'utf8')).toBe('code');
+		});
+
+		test('creates junction symlink', async () => {
+			await using fixture = await createFixture({
+				src: {
+					'index.js': 'code',
+				},
+				lib: ({ symlink }) => symlink('./src', 'junction'),
+			});
+
+			expect(await fixture.exists('lib/index.js')).toBe(true);
+			expect(await fixture.readFile('lib/index.js', 'utf8')).toBe('code');
+		});
+	});
+
+	describe('mv', () => {
+		test('renames a file', async () => {
+			await using fixture = await createFixture({
+				'old-name.txt': 'file content',
+			});
+
+			expect(await fixture.exists('old-name.txt')).toBe(true);
+			await fixture.mv('old-name.txt', 'new-name.txt');
+
+			expect(await fixture.exists('old-name.txt')).toBe(false);
+			expect(await fixture.exists('new-name.txt')).toBe(true);
+			expect(await fixture.readFile('new-name.txt', 'utf8')).toBe('file content');
+		});
+
+		test('moves a file into a subdirectory', async () => {
+			await using fixture = await createFixture({
+				'file.txt': 'content',
+				src: {},
+			});
+
+			expect(await fixture.exists('file.txt')).toBe(true);
+			await fixture.mv('file.txt', 'src/file.txt');
+
+			expect(await fixture.exists('file.txt')).toBe(false);
+			expect(await fixture.exists('src/file.txt')).toBe(true);
+			expect(await fixture.readFile('src/file.txt', 'utf8')).toBe('content');
+		});
+
+		test('renames a directory', async () => {
+			await using fixture = await createFixture({
+				src: {
+					'file.txt': 'content',
+				},
+			});
+
+			expect(await fixture.exists('src')).toBe(true);
+			await fixture.mv('src', 'lib');
+
+			expect(await fixture.exists('src')).toBe(false);
+			expect(await fixture.exists('lib')).toBe(true);
+			expect(await fixture.readFile('lib/file.txt', 'utf8')).toBe('content');
+		});
+
+		test('overwrites existing file', async () => {
+			await using fixture = await createFixture({
+				'source.txt': 'source content',
+				'target.txt': 'target content',
+			});
+
+			await fixture.mv('source.txt', 'target.txt');
+
+			expect(await fixture.exists('source.txt')).toBe(false);
+			expect(await fixture.exists('target.txt')).toBe(true);
+			expect(await fixture.readFile('target.txt', 'utf8')).toBe('source content');
+		});
+	});
+
+	describe('FileTree validation', async () => {
+		test('throws for invalid function-based content (undefined)', async () => {
+			await expect(
+				createFixture({
+					// @ts-expect-error Testing invalid return type
+					'file.txt': () => undefined,
+				}),
+			).rejects.toThrow(TypeError);
+		});
+
+		test('throws for invalid function-based content (null)', async () => {
+			await expect(
+				createFixture({
+					// @ts-expect-error Testing invalid return type
+					'file.txt': () => null,
+				}),
+			).rejects.toThrow(TypeError);
+		});
+
+		test('throws for invalid content (array)', async () => {
+			await expect(
+				createFixture({
+					// @ts-expect-error Testing invalid content type
+					'a-directory': [],
+				}),
+			).rejects.toThrow(TypeError);
+		});
+
+		test('handles Buffer.from() with byte array', async () => {
+			await using fixture = await createFixture({
+				'text.txt': 'This is text',
+				'binary.dat': Buffer.from([0x00, 0x01, 0x02, 0xFF]),
+			});
+
+			const textContent = await fixture.readFile('text.txt', 'utf8');
+			expect(textContent).toBe('This is text');
+
+			// Verify binary.dat is created as a file, not a directory
+			const stat = await fs.stat(fixture.getPath('binary.dat'));
+			expect(stat.isFile()).toBe(true);
+			expect(stat.isDirectory()).toBe(false);
+
+			// Verify the binary content is correct
+			const binaryContent = await fixture.readFile('binary.dat');
+			expect(binaryContent).toEqual(Buffer.from([0x00, 0x01, 0x02, 0xFF]));
+
+			// Verify it contains null bytes when read as UTF-8
+			const binaryAsUtf8 = await fixture.readFile('binary.dat', 'utf8');
+			expect(binaryAsUtf8.includes('\u0000')).toBe(true);
 		});
 	});
 });
