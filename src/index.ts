@@ -183,7 +183,9 @@ const createFixturePath = async (
 		// fs/promises realpath is native, so it also expands Windows 8.3 short names such as RUNNER~1
 		: await fs.realpath(os.tmpdir());
 
-	if (tempDir) {
+	// The OS temporary directory exists on disk, but may not exist in a custom fs such as memfs.
+	// On disk it is skipped: recursive mkdir() of a Windows drive root throws EPERM
+	if (tempDir || fsApi !== fs) {
 		await fsApi.mkdir(temporaryDirectory, { recursive: true });
 	}
 

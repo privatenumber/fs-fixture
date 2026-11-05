@@ -11,8 +11,14 @@ The code is `createFixturePath()` in [`src/index.ts`](../../src/index.ts).
 | Input | Base directory | Fixture directory |
 | --- | --- | --- |
 | No `tempDir` | `fs.promises.realpath(os.tmpdir())`, computed for each fixture | `fs.mkdtemp(<base>/fs-fixture-)`, such as `fs-fixture-P8M77U` |
-| `tempDir` string or URL | `path.resolve()` of the value, with no symlink resolution. fs-fixture creates it with `mkdir({ recursive: true })` | Same as above |
+| `tempDir` string or URL | `path.resolve()` of the value, with no symlink resolution | Same as above |
 | Custom `fs` without `mkdtemp` | Same as above | `fs-fixture-<pid>-<counter>`, created with `mkdir()` |
+
+fs-fixture creates the base with `mkdir({ recursive: true })` when `tempDir` is given or a custom `fs` is used:
+
+- A custom `fs` such as memfs may not contain the OS temporary directory, and memfs's `mkdtemp()` requires the parent to exist, as `node:fs` does. The test `creates fixture in memfs without tempDir` in [`tests/custom-fs.ts`](../../tests/custom-fs.ts) covers this.
+- `@platformatic/vfs` has no `mkdtemp()`. Its tests use the fallback, which created the fixture with a recursive `mkdir()`, so they did not catch the missing parent.
+- With the default `node:fs` and no `tempDir`, the base is the OS temporary directory, which exists. The `mkdir()` is skipped, because a recursive `mkdir()` of a Windows drive root, such as `TEMP=C:\`, throws `EPERM` ([Node.js v24.11.1 docs](https://github.com/nodejs/node/blob/v24.11.1/doc/api/fs.md#L3479-L3487)).
 
 `fixture.path` has no trailing separator.
 

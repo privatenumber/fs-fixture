@@ -1,7 +1,9 @@
+import os from 'node:os';
 import path from 'node:path';
 import { describe, test, expect } from 'manten';
 import { create, MemoryProvider } from '@platformatic/vfs';
-import { createFixture } from '#fs-fixture';
+import { memfs } from 'memfs';
+import { createFixture, type FsPromises } from '#fs-fixture';
 
 describe('custom fs (BYOFS)', () => {
 	test('creates from FileTree', async () => {
@@ -22,6 +24,19 @@ describe('custom fs (BYOFS)', () => {
 		await using fixture = await createFixture(undefined, { fs });
 
 		expect(await fixture.exists()).toBe(true);
+	});
+
+	// memfs mkdtemp() requires the parent directory to exist, like node:fs
+	test('creates fixture in memfs without tempDir', async () => {
+		// A fresh memfs only contains the root, so the parent is missing unless it is the root
+		expect(os.tmpdir()).not.toBe(path.parse(os.tmpdir()).root);
+
+		const { fs } = memfs();
+		await using fixture = await createFixture({
+			'file.txt': 'hello',
+		}, { fs: fs.promises as FsPromises });
+
+		expect(await fixture.readFile('file.txt', 'utf8')).toBe('hello');
 	});
 
 	test('creates from initializer', async () => {
