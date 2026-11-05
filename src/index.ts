@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import type { CopyOptions } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FsFixture, type FsFixtureType } from './fs-fixture.js';
 import type { FsPromises } from './utils/fs-types.js';
-import { osTemporaryDirectory } from './utils/temporary-directory.js';
 import {
 	type FileTree, type ApiBase, flattenFileTree, Directory, File, Symlink,
 } from './utils/flatten-file-tree.js';
@@ -180,7 +180,8 @@ const createFixturePath = async (
 ) => {
 	const temporaryDirectory = tempDir
 		? path.resolve(typeof tempDir === 'string' ? tempDir : fileURLToPath(tempDir))
-		: osTemporaryDirectory;
+		// fs/promises realpath is native, so it also expands Windows 8.3 short names such as RUNNER~1
+		: await fs.realpath(os.tmpdir());
 
 	if (tempDir) {
 		await fsApi.mkdir(temporaryDirectory, { recursive: true });

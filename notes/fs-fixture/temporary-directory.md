@@ -2,15 +2,15 @@
 
 Each fixture is a directory that `fs.mkdtemp()` creates directly inside a base directory. The base is the canonicalized `os.tmpdir()` by default, or the `tempDir` option as given. This note records how each part came to be.
 
-Last verified against v2.16.0.
+Last verified 2026-11-05 against the source after v2.16.0.
 
 ## Current behavior
 
-The code is in [`src/utils/temporary-directory.ts`](../../src/utils/temporary-directory.ts) and `createFixturePath()` in [`src/index.ts`](../../src/index.ts).
+The code is `createFixturePath()` in [`src/index.ts`](../../src/index.ts).
 
 | Input | Base directory | Fixture directory |
 | --- | --- | --- |
-| No `tempDir` | `fs.realpathSync(os.tmpdir())`, computed once when the module loads | `fs.mkdtemp(<base>/fs-fixture-)`, such as `fs-fixture-P8M77U` |
+| No `tempDir` | `fs.promises.realpath(os.tmpdir())`, computed for each fixture | `fs.mkdtemp(<base>/fs-fixture-)`, such as `fs-fixture-P8M77U` |
 | `tempDir` string or URL | `path.resolve()` of the value, with no symlink resolution. fs-fixture creates it with `mkdir({ recursive: true })` | Same as above |
 | Custom `fs` without `mkdtemp` | Same as above | `fs-fixture-<pid>-<counter>`, created with `mkdir()` |
 
@@ -20,7 +20,7 @@ The code is in [`src/utils/temporary-directory.ts`](../../src/utils/temporary-di
 
 ### Resolve symlinks in `os.tmpdir()`
 
-The base has been `fs.realpathSync(os.tmpdir())` since the first commit ([`9205452`](https://github.com/privatenumber/fs-fixture/blob/92054521abe54fb169dbe7a0aa8d4e1ba1080db2/src/utils.ts#L5)). The history does not record a rationale.
+The base has resolved symlinks in `os.tmpdir()` since the first commit, which used `fs.realpathSync` ([`9205452`](https://github.com/privatenumber/fs-fixture/blob/92054521abe54fb169dbe7a0aa8d4e1ba1080db2/src/utils.ts#L5)). The history does not record a rationale.
 
 The observable effect on macOS is that `os.tmpdir()` is under the `/var` symlink and the fixture path is under `/private/var`. Observed on macOS with Node.js v24.14.0:
 
@@ -31,7 +31,38 @@ $ node -p "require('os').tmpdir() + ' | ' + require('fs').realpathSync(require('
 
 Without this, `fixture.path` and any path that a tool resolves with `realpath`, such as a module ID, are two different strings for the same file.
 
-Known limitation: the JS `fs.realpathSync` does not expand Windows 8.3 short names, such as `RUNNER~1` in the GitHub Actions `os.tmpdir()`. A tool that compares `fixture.path` with a path from `fs.realpathSync.native` sees a mismatch. Tracked in [privatenumber/fs-fixture#36](https://github.com/privatenumber/fs-fixture/issues/36).
+### Use the native realpath for each fixture
+
+The base is `await fs.promises.realpath(os.tmpdir())`, resolved each time `createFixture()` runs. `fs.promises.realpath` uses the native implementation, not the JS one.
+
+The two implementations use different algorithms:
+
+- The JS `fs.realpathSync` walks the path one component at a time with `lstat`, and replaces only components that are symlinks ([Node v24.11.1 `lib/fs.js#L2741-L2810`](https://github.com/nodejs/node/blob/v24.11.1/lib/fs.js#L2741-L2810)). Other components keep their spelling.
+- `fs.realpathSync.native` calls libuv's `uv_fs_realpath` ([`lib/fs.js#L2836-L2841`](https://github.com/nodejs/node/blob/v24.11.1/lib/fs.js#L2836-L2841)). On Windows, libuv opens the path and asks the OS for its final name with `GetFinalPathNameByHandleW` ([libuv v1.51.0 `src/win/fs.c#L2952-L2974`](https://github.com/libuv/libuv/blob/v1.51.0/src/win/fs.c#L2952-L2974)). On Unix, it calls libc `realpath` ([`src/unix/fs.c#L793-L802`](https://github.com/libuv/libuv/blob/v1.51.0/src/unix/fs.c#L793-L802)). `fs.promises.realpath` uses the same binding ([`lib/internal/fs/promises.js#L1171-L1176`](https://github.com/nodejs/node/blob/v24.11.1/lib/internal/fs/promises.js#L1171-L1176)).
+
+So the JS version keeps a Windows 8.3 short name, such as `RUNNER~1` in the GitHub Actions `os.tmpdir()`. It also keeps a wrong-case spelling on a case-insensitive filesystem. Tools that resolve paths natively, such as Vite, then see a different string for the same file. In [privatenumber/fs-fixture#36](https://github.com/privatenumber/fs-fixture/issues/36), Vite resolved module IDs outside its `server.fs.allow` list, which held `fixture.path`, so its dev server served raw files instead of transformed ones.
+
+The test `fixture path is canonical when os.tmpdir() is not` in [`tests/index.ts`](../../tests/index.ts) locks this behavior:
+
+- It sets `TMPDIR`, `TEMP`, and `TMP` to an uppercase alias of the real temporary directory, and restores them in `finally`. On a case-insensitive filesystem the alias is the same directory, and the JS realpath keeps its spelling, as it keeps `RUNNER~1`. This does not depend on 8.3 name generation, which some Windows volumes disable.
+- It first asserts that the alias differs from its native realpath, so it fails instead of passing trivially when the platform cannot form an alias. It is skipped on Linux, which is case-sensitive.
+- Concurrent tests can see the alias while it is set. It is the same directory, so they still pass.
+
+Observed with Node.js v26.13.0 on macOS: with the JS realpath, the test fails with `Received: "/PRIVATE/VAR/FOLDERS/.../T"`. With the native realpath, it passes. The Windows CI job failed in the same way when the fix was reverted: `Received: "C:\\USERS\\RUNNERADMIN\\APPDATA\\LOCAL\\TEMP"`.
+
+Resolving for each fixture, instead of once at import, has these effects:
+
+- Importing fs-fixture does no filesystem work.
+- If the native call throws, `createFixture()` rejects. An import-time failure would make `import 'fs-fixture'` fail.
+- Changes to `TMPDIR` after import take effect, as they do for `os.tmpdir()`.
+- Each fixture costs one more `realpath` call. This is small next to the `mkdtemp()` call and the file writes. This is an estimate, not a measurement.
+
+Decision: no fallback to the JS realpath. The native call can fail where the JS one succeeds. [nodejs/node#6861](https://github.com/nodejs/node/issues/6861) reports `EISDIR` on an ImDisk RAM disk with Node.js 6. Vite still probes for that error and falls back ([`safeRealpathSync` in Vite v7.3.1](https://github.com/vitejs/vite/blob/v7.3.1/packages/vite/src/node/utils.ts#L709-L719)). [temp-dir v3](https://github.com/sindresorhus/temp-dir/blob/v3.0.0/index.js#L1-L6), which tempy uses, resolves `os.tmpdir()` with `fs.promises.realpath` and has no fallback. No current reproduction of the failure was found, so fs-fixture follows temp-dir.
+
+Known gaps:
+
+- On a mapped network drive or a `subst` drive, the native version can return a different drive spelling, such as a UNC path ([nodejs/node#37737](https://github.com/nodejs/node/issues/37737)). A temporary directory on such a drive was not tested.
+- Revisit if a user reports that `createFixture()` fails on a RAM disk or similar volume. A fallback is then one `.catch()` that calls `fs.realpathSync`.
 
 ### Do not canonicalize `tempDir`
 

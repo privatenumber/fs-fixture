@@ -3,7 +3,9 @@ import type { Dirent } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, test, expect } from 'manten';
+import {
+	describe, test, expect, skip,
+} from 'manten';
 import { createFixture, type FsFixture } from '#fs-fixture';
 
 describe('fs-fixture', () => {
@@ -305,6 +307,41 @@ describe('fs-fixture', () => {
 
 		await rm();
 		expect(await exists()).toBe(false);
+	});
+
+	test('fixture path is canonical when os.tmpdir() is not', async () => {
+		// Linux is case-sensitive, so it has no non-canonical alias that the JS realpath keeps
+		if (process.platform === 'linux') {
+			skip('Requires a case-insensitive filesystem');
+		}
+
+		// fs/promises realpath is native: it resolves symlinks, case, and Windows 8.3 short names
+		const canonicalTemporaryDirectory = await fs.realpath(os.tmpdir());
+		const alias = canonicalTemporaryDirectory.toUpperCase();
+		expect(alias).not.toBe(canonicalTemporaryDirectory);
+		expect(await fs.realpath(alias)).toBe(canonicalTemporaryDirectory);
+
+		// os.tmpdir() reads TMPDIR on POSIX, and TEMP or TMP on Windows
+		const variables = ['TMPDIR', 'TEMP', 'TMP'];
+		const originalValues = variables.map(name => process.env[name]);
+		for (const name of variables) {
+			process.env[name] = alias;
+		}
+
+		// Concurrent tests may also see the alias. It is the same directory, so they still pass
+		try {
+			await using fixture = await createFixture();
+			expect(path.dirname(fixture.path)).toBe(canonicalTemporaryDirectory);
+		} finally {
+			for (const [index, name] of variables.entries()) {
+				const value = originalValues[index];
+				if (value === undefined) {
+					delete process.env[name];
+				} else {
+					process.env[name] = value;
+				}
+			}
+		}
 	});
 
 	test('custom temporary directory', async () => {
